@@ -4,23 +4,42 @@ const resultDiv = document.querySelector('#result');
 
 fishInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); searchBtn.click(); } });
 
-// 💡 1. 維基百科描述
+// 💡 1. 維基百科雙語描述 (zh -> en)
 window.fetchWikiData = async function(sciName, btnElement) {
     const targetDiv = btnElement.parentElement.nextElementSibling;
-    btnElement.innerHTML = '⏳ 載入中...';
+    btnElement.innerHTML = '⏳ 檢索中...';
     btnElement.disabled = true;
     targetDiv.style.display = 'block';
-    targetDiv.innerHTML = '正在載入百科描述...';
+    targetDiv.innerHTML = '正在跨語言檢索百科描述...';
 
+    const slug = sciName.replace(/\s+/g, '_');
+    
     try {
-        const wikiTitle = sciName.replace(/\s+/g, '_');
-        let res = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
-        if (!res.ok) res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
+        // 先試中文 zh
+        let res = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${slug}`);
+        let langLabel = "中文版";
+        
+        // 若中文找不到 (404)，改試英文 en
+        if (!res.ok) {
+            res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
+            langLabel = "英文版";
+        }
+
+        if (!res.ok) throw new Error('雙語 Wiki 均查無資料');
+        
         const data = await res.json();
-        targetDiv.innerHTML = `<div><p><strong>📖 百科摘要：</strong></p><p>${data.extract || '暫無詳細說明。'}</p><div style="text-align: right; margin-top:10px;"><a href="${data.content_urls.desktop.page}" target="_blank" style="color: #0077be; font-weight: bold; text-decoration: none;">➔ 閱讀完整百科</a></div></div>`;
+        targetDiv.innerHTML = `
+            <div>
+                <p><strong>📖 百科摘要 (<span style="color:var(--primary-blue)">${langLabel}</span>)：</strong></p>
+                <p>${data.extract || '暫無詳細說明。'}</p>
+                <div style="text-align: right; margin-top:10px;">
+                    <a href="${data.content_urls.desktop.page}" target="_blank" style="color: #0077be; font-weight: bold; text-decoration: none;">➔ 閱讀完整百科</a>
+                </div>
+            </div>
+        `;
         btnElement.style.display = 'none';
     } catch (error) {
-        targetDiv.innerHTML = '⚠️ 無法取得該學名的百科資料。';
+        targetDiv.innerHTML = '⚠️ 抱歉，中英文維基百科中暫無此物種的直接文獻。';
         btnElement.innerHTML = '📸 百科描述';
         btnElement.disabled = false;
     }
@@ -61,7 +80,6 @@ searchBtn.addEventListener('click', async () => {
         ]);
 
         const resultMap = new Map();
-        // 🚀 移除 Kingdom 過濾，全面放行
         const combine = (list) => { if (list) list.forEach(item => { resultMap.set(item.taxon_id, item); }); };
         combine(cR.data); combine(gR.data);
 
@@ -75,7 +93,6 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 🚀 核心過濾：只保留「種」與「亞種」，移除所有其餘排除條件
         let list = Array.from(resultMap.values()).filter(f => {
             const rank = (f.rank || '').toLowerCase();
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
@@ -95,10 +112,7 @@ searchBtn.addEventListener('click', async () => {
             const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
             const rankLabel = (fish.rank || '').toLowerCase() === 'species' ? '種' : '亞種';
             
-            // 🚀 生成外部連結
             const slug = sciName.replace(/\s+/g, '-');
-            const fishBaseUrl = `https://www.fishbase.se/summary/${slug}`;
-            const seaLifeUrl = `https://sealifebase.ca/summary/${slug}`;
 
             return `
                 <div class="fish-card">
@@ -136,8 +150,8 @@ searchBtn.addEventListener('click', async () => {
                         <div class="action-buttons">
                             <button class="btn btn-wiki" onclick="fetchWikiData('${sciName}', this)">📸 百科描述</button>
                             <a class="btn btn-taicol" href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank">🏷️ TaiCOL</a>
-                            <a class="btn btn-fishbase" href="${fishBaseUrl}" target="_blank">➔ FishBase</a>
-                            <a class="btn btn-sealife" href="${seaLifeUrl}" target="_blank">➔ SeaLifeBase</a>
+                            <a class="btn btn-fishbase" href="https://www.fishbase.se/summary/${slug}" target="_blank">➔ FishBase</a>
+                            <a class="btn btn-sealife" href="https://sealifebase.ca/summary/${slug}" target="_blank">➔ SeaLifeBase</a>
                         </div>
                         <div class="wiki-content"></div>
                     </div>
@@ -145,13 +159,21 @@ searchBtn.addEventListener('click', async () => {
             `;
         }).join('');
 
-        // 圖片異步載入
+        // 💡 4. 雙語異步載入圖片 (zh -> en)
         list.forEach(async (fish) => {
             const sciName = fish.scientific_name || fish.simple_name;
             const imgDiv = document.getElementById(`img-${fish.taxon_id}`);
+            const slug = sciName.replace(/\s+/g, '_');
+            
             try {
-                const res = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${sciName.replace(/\s+/g, '_')}`);
-                const data = await res.json();
+                // 先嘗試中文
+                let wikiRes = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${slug}`);
+                if (!wikiRes.ok) {
+                    // 若中文沒圖，改抓英文
+                    wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
+                }
+                
+                const data = await wikiRes.json();
                 if (data.thumbnail) {
                     imgDiv.innerHTML = `<img src="${data.thumbnail.source}" alt="${sciName}" onerror="this.parentElement.style.display='none'">`;
                 } else {

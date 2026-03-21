@@ -61,7 +61,7 @@ searchBtn.addEventListener('click', async () => {
         ]);
 
         const resultMap = new Map();
-        // 💡 移除 Kingdom 過濾，全面放行
+        // 🚀 移除 Kingdom 過濾，全面放行
         const combine = (list) => { if (list) list.forEach(item => { resultMap.set(item.taxon_id, item); }); };
         combine(cR.data); combine(gR.data);
 
@@ -75,7 +75,7 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 💡 核心過濾：只保留「種」與「亞種」，移除所有其餘排除條件
+        // 🚀 核心過濾：只保留「種」與「亞種」，移除所有其餘排除條件
         let list = Array.from(resultMap.values()).filter(f => {
             const rank = (f.rank || '').toLowerCase();
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
@@ -94,6 +94,11 @@ searchBtn.addEventListener('click', async () => {
             const sciName = fish.scientific_name || fish.simple_name;
             const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
             const rankLabel = (fish.rank || '').toLowerCase() === 'species' ? '種' : '亞種';
+            
+            // 🚀 生成外部連結
+            const slug = sciName.replace(/\s+/g, '-');
+            const fishBaseUrl = `https://www.fishbase.se/summary/${slug}`;
+            const seaLifeUrl = `https://sealifebase.ca/summary/${slug}`;
 
             return `
                 <div class="fish-card">
@@ -131,7 +136,8 @@ searchBtn.addEventListener('click', async () => {
                         <div class="action-buttons">
                             <button class="btn btn-wiki" onclick="fetchWikiData('${sciName}', this)">📸 百科描述</button>
                             <a class="btn btn-taicol" href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank">🏷️ TaiCOL</a>
-                            <a class="btn btn-fishbase" href="https://www.fishbase.se/summary/${sciName.replace(/\s+/g, '-')}" target="_blank">➔ FishBase</a>
+                            <a class="btn btn-fishbase" href="${fishBaseUrl}" target="_blank">➔ FishBase</a>
+                            <a class="btn btn-sealife" href="${seaLifeUrl}" target="_blank">➔ SeaLifeBase</a>
                         </div>
                         <div class="wiki-content"></div>
                     </div>
@@ -139,6 +145,7 @@ searchBtn.addEventListener('click', async () => {
             `;
         }).join('');
 
+        // 圖片異步載入
         list.forEach(async (fish) => {
             const sciName = fish.scientific_name || fish.simple_name;
             const imgDiv = document.getElementById(`img-${fish.taxon_id}`);

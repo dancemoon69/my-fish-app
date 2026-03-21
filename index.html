@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <title>認識臺灣水生動物圖鑑</title>
     
     <style>
@@ -29,7 +34,7 @@
         }
 
         .container {
-            max-width: 800px; /* 限制最大寬度，讓在電腦螢幕上不會太寬 */
+            max-width: 800px;
             margin: 0 auto;
             background: transparent;
         }
@@ -100,7 +105,7 @@
         }
 
         /* =========================================
-           3. 魚類卡片專屬 UI 設計 (配合 JS 渲染)
+           3. 魚類卡片專屬 UI 設計
         ========================================= */
         .fish-card {
             background: #ffffff;
@@ -155,7 +160,6 @@
             color: var(--text-muted);
         }
 
-        /* 保育狀態區塊 */
         .conservation-box {
             background: #fdfaf6;
             padding: 16px;
@@ -190,7 +194,6 @@
             color: #888;
         }
 
-        /* 按鈕群組 */
         .action-buttons {
             display: flex;
             gap: 12px;
@@ -199,7 +202,7 @@
             flex-wrap: wrap;
         }
 
-        .btn-wiki, .btn-fishbase {
+        .btn-wiki, .btn-fishbase, .btn-taicol {
             flex: 1;
             min-width: 140px;
             padding: 12px 16px;
@@ -215,16 +218,18 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
+            color: white;
         }
 
-        .btn-wiki { background: var(--primary-blue); color: #ffffff; }
+        .btn-wiki { background: var(--primary-blue); }
         .btn-wiki:hover { background: var(--dark-blue); }
-        .btn-wiki:disabled { background: #a0c4da; cursor: not-allowed; }
         
-        .btn-fishbase { background: var(--accent-green); color: #ffffff; }
+        .btn-taicol { background: #ef6c00; }
+        .btn-taicol:hover { background: #d66200; }
+
+        .btn-fishbase { background: var(--accent-green); }
         .btn-fishbase:hover { background: #00332a; }
 
-        /* 百科內容展開區 */
         .wiki-content {
             display: none;
             margin-top: 16px;
@@ -243,7 +248,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* 資料來源宣告 Footer */
         .data-credits {
             text-align: center;
             font-size: 0.85em;
@@ -254,32 +258,11 @@
             line-height: 1.8;
         }
 
-        .data-credits a {
-            color: var(--primary-blue);
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .data-credits a:hover {
-            text-decoration: underline;
-        }
-
-        /* =========================================
-           4. RWD (手機版響應式設定)
-        ========================================= */
         @media (max-width: 600px) {
-            .search-box {
-                flex-direction: column; /* 手機上搜尋按鈕會掉到輸入框下方 */
-            }
-            .data-grid {
-                grid-template-columns: 1fr; /* 手機上資料變成單欄排列 */
-            }
-            .conservation-tags {
-                gap: 15px;
-            }
-            .header h1 {
-                font-size: 1.6em;
-            }
+            .search-box { flex-direction: column; }
+            .data-grid { grid-template-columns: 1fr; }
+            .header h1 { font-size: 1.6em; }
+            .action-buttons { flex-direction: column; }
         }
     </style>
 </head>
@@ -303,7 +286,16 @@
             </div>
     </div>
 
-    <script src="main.js"></script>
+    <script>
+        (function() {
+            const script = document.createElement('script');
+            // 在檔名後方加上亂數或時間戳記，徹底殺死快取
+            script.src = 'main.js?v=' + Date.now();
+            script.async = true;
+            document.body.appendChild(script);
+            console.log("🚀 強制更新：已載入最新腳本版本 " + script.src);
+        })();
+    </script>
 
 </body>
 </html>

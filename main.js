@@ -4,7 +4,7 @@ const resultDiv = document.querySelector('#result');
 
 fishInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); searchBtn.click(); } });
 
-// 💡 1. 維基百科雙語描述 (zh -> en)
+// 💡 1. 維基百科雙語描述
 window.fetchWikiData = async function(sciName, btnElement) {
     const targetDiv = btnElement.parentElement.nextElementSibling;
     btnElement.innerHTML = '⏳ 檢索中...';
@@ -91,7 +91,7 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 🚀 核心過濾器 (排除病毒與非特定階層)
+        // 🚀 核心過濾器
         let list = Array.from(resultMap.values()).filter(f => {
             const rank = (f.rank || '').toLowerCase();
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
@@ -114,13 +114,14 @@ searchBtn.addEventListener('click', async () => {
         
         resultDiv.innerHTML = list.map(fish => {
             const sciName = fish.scientific_name || fish.simple_name;
-            const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
+            const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:3px 10px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
             const rankLabel = (fish.rank || '').toLowerCase() === 'species' ? '種' : '亞種';
             
             // 🚀 生成外部連結
             const slug = sciName.replace(/\s+/g, '-');
             const fishDbUrl = `https://fishdb.sinica.edu.tw/chi/species.php?science=${sciName.replace(/\s+/g, '+')}`;
-            const wormsUrl = `https://www.marinespecies.org/aphia.php?p=taxlist&searchterm=${encodeURIComponent(sciName)}`; // 🚀 新增 WoRMS 連結
+            // 🔮 WoRMS 精準對應咒語：使用 taxdetails & scientificname 直接跳轉個別頁面
+            const wormsUrl = `https://www.marinespecies.org/aphia.php?p=taxdetails&scientificname=${encodeURIComponent(sciName)}`;
 
             return `
                 <div class="fish-card">

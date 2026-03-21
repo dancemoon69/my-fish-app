@@ -91,14 +91,28 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
+        // 🚀 核心過濾器：階層過濾 + 生物界域排除
         let list = Array.from(resultMap.values()).filter(f => {
+            // A. 階層檢查 (僅留 種、亞種、變種、型)
             const rank = (f.rank || '').toLowerCase();
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
-            return validRanks.includes(rank);
+            if (!validRanks.includes(rank)) return false;
+
+            // B. 界域封印 (排除真菌、細菌、古菌、病毒)
+            const kingdom = (f.kingdom || '').toLowerCase();
+            const sciName = (f.scientific_name || '').toLowerCase();
+            const excludedKingdoms = ['fungi', 'archaea', 'bacteria', 'viruses', 'virus'];
+            
+            if (excludedKingdoms.includes(kingdom)) return false;
+            
+            // 額外檢查學名是否包含病毒字眼 (針對某些分類不全的情況)
+            if (sciName.includes('virus')) return false;
+
+            return true;
         });
 
         if (list.length === 0) {
-            resultDiv.innerHTML = '<p style="text-align:center; color:red; margin-top:50px;">❌ 找不到具體的種或亞種資料。</p>';
+            resultDiv.innerHTML = '<p style="text-align:center; color:red; margin-top:50px;">❌ 找不到符合條件的物種資料。</p>';
             searchBtn.disabled = false;
             return;
         }
@@ -107,7 +121,7 @@ searchBtn.addEventListener('click', async () => {
         
         resultDiv.innerHTML = list.map(fish => {
             const sciName = fish.scientific_name || fish.simple_name;
-            const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
+            const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:3px 10px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
             const rankLabel = (fish.rank || '').toLowerCase() === 'species' ? '種' : '亞種';
             
             const slug = sciName.replace(/\s+/g, '-');

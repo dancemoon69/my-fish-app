@@ -2,7 +2,29 @@ const searchBtn = document.querySelector('#searchBtn');
 const fishInput = document.querySelector('#fishName');
 const resultDiv = document.querySelector('#result');
 
-// 💡 百科圖鑑引擎
+// 💡 1. 雙通道安全連線模組 (直連被擋自動切換 Proxy)
+async function safeFetch(url) {
+    try {
+        // 先嘗試直連
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`直連狀態異常: ${res.status}`);
+        return await res.json();
+    } catch (error) {
+        console.warn("直連受阻 (CORS/網路問題)，正在啟用 AllOrigins 備用通道...");
+        try {
+            // 備用通道：AllOrigins (比 corsproxy 穩定非常多)
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+            const proxyRes = await fetch(proxyUrl);
+            if (!proxyRes.ok) throw new Error(`備用通道異常: ${proxyRes.status}`);
+            return await proxyRes.json();
+        } catch (proxyError) {
+            console.error("雙通道皆失敗:", proxyError);
+            throw proxyError; // 丟出錯誤讓外層 catch 捕捉
+        }
+    }
+}
+
+// 💡 2. 百科圖鑑引擎
 window.fetchWikiData = async function(sciName, btnElement) {
     const targetDiv = btnElement.parentElement.nextElementSibling;
     const originalBtnText = btnElement.innerHTML;
@@ -42,7 +64,7 @@ window.fetchWikiData = async function(sciName, btnElement) {
     }
 };
 
-// 💡 燈號轉換器
+// 💡 3. 保育燈號轉換器
 function getConservationStyle(code) {
     if (!code || code === 'null') return { label: '無紀錄', bg: '#f5f5f5', color: '#aaa', border: '#eee' };
     const upperCode = code.toUpperCase().replace(/^N/, ''); 
@@ -64,7 +86,7 @@ function getConservationStyle(code) {
     return { html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">${config.label} (${upperCode})</span>` };
 }
 
-// 💡 核心搜尋邏輯 (完全重置，乾淨俐落)
+// 💡 4. 核心搜尋邏輯 (乾淨、防重、精準)
 searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
@@ -73,11 +95,10 @@ searchBtn.addEventListener('click', async () => {
     resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在連接 TaiCOL 魚類名錄進行檢索...</p>`;
 
     try {
-        // 步驟 1：只透過官方魚類群組進行模糊比對，避免抓到非魚類
-        const matchRes = await fetch(`https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(keyword)}&best=no&bio_group=魚類`);
-        const matchData = await matchRes.json();
+        // 步驟 1：只透過官方魚類群組進行模糊比對
+        const matchData = await safeFetch(`https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(keyword)}&best=no&bio_group=魚類`);
 
-        if (!matchData.data || matchData.data.length === 0) {
+        if (!matchData || !matchData.data || matchData.data.length === 0) {
             resultDiv.innerHTML = `
                 <div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">
                     ❌ 找不到與「${keyword}」相關的魚類紀錄。<br>
@@ -87,7 +108,7 @@ searchBtn.addEventListener('click', async () => {
             return;
         }
 
-        // 步驟 2：提取唯一的 taxon_id (自動合併同物異名)
+        // 步驟 2：提取唯一的 taxon_id (自動去除分身 ID)
         const uniqueIds = new Set();
         matchData.data.forEach(item => {
             if (item.taxon_id) uniqueIds.add(item.taxon_id);
@@ -96,20 +117,25 @@ searchBtn.addEventListener('click', async () => {
         // 步驟 3：批量抓取詳細資料 (上限 30 筆)
         const detailPromises = Array.from(uniqueIds).slice(0, 30).map(async (tid) => {
             try {
-                const res = await fetch(`https://api.taicol.tw/v2/taxon?taxon_id=${tid}`);
-                const json = await res.json();
+                const json = await safeFetch(`https://api.taicol.tw/v2/taxon?taxon_id=${tid}`);
                 return json.data ? (Array.isArray(json.data) ? json.data[0] : json.data) : null;
             } catch (e) { return null; }
         });
 
         let fishList = (await Promise.all(detailPromises)).filter(fish => fish !== null);
 
-        // 步驟 4：最終防線 (只保留 種 與 亞種)
+        // 步驟 4：最終防線 (只保留 種 與 亞種，避免科/屬混入)
         const validRanks = ['species', 'subspecies', 'variety', 'form'];
         fishList = fishList.filter(fish => {
             const currentRank = fish.rank ? fish.rank.toLowerCase() : '';
             return validRanks.includes(currentRank);
         });
+
+        if (fishList.length === 0) {
+            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找到相關紀錄，但不屬於「物種」層級（可能是科或屬）。</div>`;
+            searchBtn.disabled = false;
+            return;
+        }
 
         // 步驟 5：渲染結果
         let htmlContent = `<p style="margin-bottom:20px; color:var(--text-muted); font-weight:bold;">共找到 ${fishList.length} 筆魚類資料：</p>`;
@@ -164,8 +190,12 @@ searchBtn.addEventListener('click', async () => {
         resultDiv.innerHTML = htmlContent;
 
     } catch (error) {
-        console.error("❌ 搜尋錯誤:", error);
-        resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px; background:#fff3f3; border-radius:12px;">⚠️ 系統連線錯誤，請確認網路狀態或稍後再試。</div>`;
+        console.error("❌ 系統錯誤詳細資訊:", error);
+        resultDiv.innerHTML = `
+            <div style="color:red; text-align:center; padding:20px; background:#fff3f3; border-radius:12px; border:1px solid #ffcdd2;">
+                ⚠️ 系統連線失敗：API 伺服器拒絕連線或網路異常。<br>
+                <small style="color:#666;">詳細錯誤：${error.message}</small>
+            </div>`;
     } finally {
         searchBtn.disabled = false;
     }

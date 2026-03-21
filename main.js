@@ -6,63 +6,74 @@ searchBtn.addEventListener('click', async () => {
     const name = fishInput.value.trim();
     if (!name) return;
 
-    resultDiv.innerHTML = `<p style="color: #0077be; text-align:center;">🔍 正在比對物種名錄...</p>`;
-
-    // --- 第一階段：使用 nameMatch 抓取可能性清單 ---
-    // best=no 會列出所有模糊匹配的結果
-    const matchUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(name)}&best=no&only_taiwan=yes`;
-    const proxyMatch = `https://corsproxy.io/?${encodeURIComponent(matchUrl)}`;
+    // 1. 初始化畫面
+    resultDiv.innerHTML = `<div id="status-box" style="padding:20px; text-align:center; color:#0077be;">
+        <p id="status-text">正在連線 TaiCOL 進行名稱比對... 🔍</p>
+    </div>`;
+    const statusText = document.querySelector('#status-text');
 
     try {
+        // --- 步驟一：使用 nameMatch 模糊比對抓出 taxon_id ---
+        const matchUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(name)}&best=no`;
+        // 使用 allorigins 的 raw 模式，這能直接拿回原始 JSON
+        const proxyMatch = `https://api.allorigins.win/raw?url=${encodeURIComponent(matchUrl)}`;
+
         const matchRes = await fetch(proxyMatch);
+        if (!matchRes.ok) throw new Error('名稱比對連線失敗');
         const matchData = await matchRes.json();
         
         const candidates = matchData.data || [];
-
         if (candidates.length === 0) {
             resultDiv.innerHTML = `❌ 找不到與「${name}」相關的學名紀錄。`;
             return;
         }
 
-        resultDiv.innerHTML = `<p style="color: #0077be; text-align:center;">🧬 找到 ${candidates.length} 個可能學名，正在讀取詳細資料...</p>`;
+        statusText.innerText = `找到 ${candidates.length} 個可能物種，正在調閱詳細資料... 🧬`;
 
-        // --- 第二階段：拿著 taxon_id 串接詳細資料 ---
-        const detailPromises = candidates.slice(0, 8).map(async (item) => {
+        // --- 步驟二：串聯 taxon API 抓取中英文詳細資料 ---
+        // 我們取前 5 筆，避免過多請求導致被封鎖
+        const detailPromises = candidates.slice(0, 5).map(async (item) => {
             const tid = item.taxon_id;
             const detailUrl = `https://api.taicol.tw/v2/taxon/${tid}`;
-            const proxyDetail = `https://corsproxy.io/?${encodeURIComponent(detailUrl)}`;
+            const proxyDetail = `https://api.allorigins.win/raw?url=${encodeURIComponent(detailUrl)}`;
             
             try {
                 const dRes = await fetch(proxyDetail);
                 const dData = await dRes.json();
-                // 處理 v2 回傳結構：資料通常在 .data 陣列的第一筆
+                // 確保抓到正確的層級 (v2 有時資料在 .data[0])
                 return dData.data ? (Array.isArray(dData.data) ? dData.data[0] : dData.data) : dData;
             } catch (e) {
-                return null; // 失敗的跳過
+                console.warn(`ID ${tid} 讀取失敗:`, e);
+                return null;
             }
         });
 
-        const settledResults = await Promise.all(detailPromises);
-        const fishList = settledResults.filter(r => r !== null);
+        const detailedList = await Promise.all(detailPromises);
+        const fishList = detailedList.filter(f => f !== null && f.scientific_name);
 
-        // --- 第三階段：渲染結果 ---
+        if (fishList.length === 0) {
+            resultDiv.innerHTML = `❌ 無法取得這些物種的詳細資料。`;
+            return;
+        }
+
+        // --- 步驟三：渲染清單並連接 FishBase ---
         resultDiv.innerHTML = fishList.map(fish => {
-            // 從學名中擷取前兩個單字 (屬名+種小名) 用於 FishBase
-            const fullSci = fish.scientific_name || "Unknown";
-            const cleanSci = fullSci.split(' ').slice(0, 2).join(' ');
+            const sciName = fish.scientific_name;
+            // 擷取屬名與種小名 (FishBase 連結標準)
+            const cleanSci = sciName.split(' ').slice(0, 2).join(' ');
 
             return `
-                <div style="background: white; padding: 20px; border-radius: 15px; border: 2px solid #0077be; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                <div style="background: white; padding: 20px; border-radius: 15px; border: 2px solid #0077be; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div style="flex: 1;">
                             <h3 style="margin: 0 0 10px 0; color: #0077be;">🐟 ${fish.common_name_c || name}</h3>
-                            <p style="margin: 5px 0;"><strong>科別：</strong> ${fish.family_c || ''} (${fish.family || '未分類'})</p>
-                            <p style="margin: 5px 0; font-size: 0.9em; color: #d32f2f;"><strong>正式學名：</strong> <i>${fullSci}</i></p>
-                            ${fish.common_name_e ? `<p style="margin: 5px 0; font-size: 0.85em; color: #666;">英文名：${fish.common_name_e}</p>` : ''}
+                            <p style="margin: 5px 0;"><strong>科別：</strong> ${fish.family_c || fish.family || '未分類'}</p>
+                            <p style="margin: 5px 0; font-size: 0.9em; color: #d32f2f;"><strong>正式學名：</strong> <i>${sciName}</i></p>
+                            <p style="margin: 5px 0; font-size: 0.8em; color: #666;">英文俗名：${fish.common_name_e || 'N/A'}</p>
                         </div>
                         <a href="https://www.fishbase.se/summary/${cleanSci.replace(/\s+/g, '-')}" 
                            target="_blank" 
-                           style="background: #0077be; color: white; padding: 10px 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.9em; white-space: nowrap;">
+                           style="background: #0077be; color: white; padding: 10px 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.9em; white-space: nowrap; margin-left:10px;">
                            FishBase
                         </a>
                     </div>
@@ -71,7 +82,13 @@ searchBtn.addEventListener('click', async () => {
         }).join('');
 
     } catch (error) {
-        console.error("搜尋流程出錯:", error);
-        resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px;">⚠️ API 連線異常，請稍後再試。</div>`;
+        console.error("搜尋崩潰:", error);
+        resultDiv.innerHTML = `
+            <div style="color: #d32f2f; padding: 15px; border: 1px solid #ffcdd2; background: #fff3f3; border-radius: 10px; text-align:center;">
+                ⚠️ <strong>系統輸出錯誤</strong><br>
+                原因：${error.message}<br>
+                <small>請在電腦按 F12 查看 Console 紀錄。</small>
+            </div>
+        `;
     }
 });

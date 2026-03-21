@@ -64,7 +64,7 @@ function getConservationStyle(code) {
     return { html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">${config.label} (${upperCode})</span>` };
 }
 
-// 💡 3. 穩定版核心搜尋邏輯
+// 💡 3. 穩定版核心搜尋邏輯 (退回使用 corsproxy)
 searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
@@ -73,7 +73,7 @@ searchBtn.addEventListener('click', async () => {
     resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在連接名錄資料庫進行檢索...</p>`;
 
     try {
-        // 使用確定能穩定連線的 proxy
+        // 使用確定能跑的 corsproxy.io
         const matchUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/nameMatch?name=${keyword}&best=no&bio_group=魚類`)}`;
         const commonUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?common_name=${keyword}`)}`;
         const groupUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?taxon_group=${keyword}`)}`;
@@ -97,7 +97,7 @@ searchBtn.addEventListener('click', async () => {
         addTaxonData(commonRes.data);
         addTaxonData(groupRes.data);
 
-        // 整理需要反查詳細資料的 ID (使用 Set 去重)
+        // 整理需要反查詳細資料的 ID (使用 Set 避免重複消耗額度)
         const matchIdsToFetch = new Set();
         if (matchRes.data) {
             matchRes.data.forEach(item => { 
@@ -121,16 +121,17 @@ searchBtn.addEventListener('click', async () => {
             }
         });
 
-        // 💡 乾淨的過濾器：只保留種/亞種，且「僅排除」昆蟲綱
+        // 💡 乾淨的過濾器：只保留種/亞種，且「唯一排除」昆蟲綱
         let fishList = Array.from(resultMap.values()).filter(fish => {
             // 1. 容許 種(Species) 與 亞種(Subspecies)，讓櫻花鉤吻鮭能正常出現
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
             const currentRank = fish.rank ? fish.rank.toLowerCase() : '';
             if (currentRank && !validRanks.includes(currentRank)) return false;
 
-            // 2. 絕對排除昆蟲綱 (不論是中文還是拉丁學名)
-            const classStr = (fish.class_c || '') + (fish.class || '');
-            if (classStr.includes('昆蟲') || classStr.includes('Insecta')) {
+            // 2. 唯一排除名單：絕對排除昆蟲綱 (轉換為大寫/防呆比對)
+            const classEn = fish.class ? fish.class.toUpperCase() : '';
+            const classZh = fish.class_c || '';
+            if (classEn.includes('INSECTA') || classZh.includes('昆蟲')) {
                 return false;
             }
 
@@ -145,7 +146,7 @@ searchBtn.addEventListener('click', async () => {
         }
 
         // 💡 4. 渲染卡片結果
-        let htmlContent = `<p style="margin-bottom:20px; color:var(--text-muted); font-weight:bold;">共找到 ${fishList.length} 筆魚類資料：</p>`;
+        let htmlContent = `<p style="margin-bottom:20px; color:var(--text-muted); font-weight:bold;">共找到 ${fishList.length} 筆資料：</p>`;
         
         htmlContent += fishList.map(fish => {
             const sciName = fish.simple_name || fish.scientific_name || "Unknown";

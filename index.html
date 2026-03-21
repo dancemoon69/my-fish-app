@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>臺灣魚類圖鑑檢索系統</title>
+    <title>認識臺灣水生動物圖鑑</title>
     
     <style>
         /* =========================================
@@ -13,7 +13,7 @@
             --primary-blue: #0077be;
             --dark-blue: #00568c;
             --accent-green: #004d40;
-            --danger-red: #c62828;
+            --danger-red: #d32f2f;
             --bg-light: #f4f7f9;
             --text-main: #333;
             --text-muted: #666;
@@ -46,7 +46,7 @@
         .header h1 {
             color: var(--primary-blue);
             margin: 0 0 10px 0;
-            font-size: 2em;
+            font-size: 2.2em;
         }
 
         .header p {
@@ -287,12 +287,15 @@
 
     <div class="container">
         <div class="header">
-            <h1>🐟 臺灣魚類圖鑑檢索系統</h1>
-            <p>請輸入魚類俗名、學名或科別（例如：石斑、吳郭魚、慈鯛科）</p>
+            <h1>🐟 認識臺灣水生動物圖鑑</h1>
+            <p>請輸入動物俗名、學名或科別（例如：石斑、吳郭魚、慈鯛科）</p>
+            <p style="color: #d32f2f; font-weight: bold; font-size: 0.9em; margin-top: 10px; background: #fff3f3; display: inline-block; padding: 5px 15px; border-radius: 20px;">
+                💡 註明：如果找到不是水生動物是正常的，因爲資料排除不了ＸＤＤＤＤ
+            </p>
         </div>
 
         <div class="search-box">
-            <input type="text" id="fishName" placeholder="開始探索台灣魚類..." autocomplete="off">
+            <input type="text" id="fishName" placeholder="開始探索圖鑑資料..." autocomplete="off">
             <button id="searchBtn">🔍 開始檢索</button>
         </div>
 

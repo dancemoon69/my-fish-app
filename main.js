@@ -91,7 +91,7 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 🚀 核心過濾器
+        // 🚀 核心過濾器 (排除病毒與非特定階層)
         let list = Array.from(resultMap.values()).filter(f => {
             const rank = (f.rank || '').toLowerCase();
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
@@ -117,9 +117,10 @@ searchBtn.addEventListener('click', async () => {
             const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
             const rankLabel = (fish.rank || '').toLowerCase() === 'species' ? '種' : '亞種';
             
+            // 🚀 生成外部連結
             const slug = sciName.replace(/\s+/g, '-');
             const fishDbUrl = `https://fishdb.sinica.edu.tw/chi/species.php?science=${sciName.replace(/\s+/g, '+')}`;
-            const wormsUrl = `https://www.marinespecies.org/aphia.php?p=taxlist&searchterm=${encodeURIComponent(sciName)}`; // 🚀 新增 WoRMS
+            const wormsUrl = `https://www.marinespecies.org/aphia.php?p=taxlist&searchterm=${encodeURIComponent(sciName)}`; // 🚀 新增 WoRMS 連結
 
             return `
                 <div class="fish-card">

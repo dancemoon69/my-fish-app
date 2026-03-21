@@ -53,12 +53,11 @@ function getStatusHtml(code) {
         'NCR': '極危', 'NEN': '瀕危', 'NVU': '易危', 'NNT': '近危', 'NLC': '無危', 'DD': '數據缺乏'
     };
     const label = map[upper] || upper;
-    // 燈號顏色邏輯
-    let color = '#4caf50'; // 預設綠色 (LC/NLC)
-    if (upper.includes('CR') || upper.includes('EN')) color = '#d32f2f'; // 紅色
-    else if (upper.includes('VU')) color = '#ff9800'; // 橘色
-    else if (upper.includes('NT')) color = '#8bc34a'; // 淺綠
-    else if (upper.includes('EX') || upper.includes('EW') || upper.includes('RE')) color = '#000000'; // 黑色
+    let color = '#4caf50'; 
+    if (upper.includes('CR') || upper.includes('EN')) color = '#d32f2f'; 
+    else if (upper.includes('VU')) color = '#ff9800'; 
+    else if (upper.includes('NT')) color = '#8bc34a'; 
+    else if (upper.includes('EX') || upper.includes('EW') || upper.includes('RE')) color = '#000000'; 
 
     return `<span style="background:${color}; color:white; padding:3px 10px; border-radius:15px; font-size:0.85em; font-weight:bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">${label} (${upper})</span>`;
 }
@@ -100,7 +99,7 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 核心過濾：只留 Species 與 Subspecies，排除昆蟲
+        // 過濾階層與排除昆蟲
         let list = Array.from(resultMap.values()).filter(f => {
             const rank = f.rank ? f.rank.toLowerCase() : '';
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
@@ -116,11 +115,9 @@ searchBtn.addEventListener('click', async () => {
             return;
         }
 
-        // 渲染結果
         const cardsHtml = await Promise.all(list.map(async (fish) => {
             const sciName = fish.scientific_name || fish.simple_name;
             
-            // 🖼️ 抓取縮圖
             let imageUrl = '';
             try {
                 const wikiRes = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${sciName.replace(/\s+/g, '_')}`);
@@ -133,8 +130,6 @@ searchBtn.addEventListener('click', async () => {
                 : '';
 
             const alienMap = { 'native': '原生', 'naturalized': '歸化', 'invasive': '入侵', 'cultured': '養殖' };
-            
-            // 🛡️ 華盛頓公約 (CITES) 標籤處理
             const citesTag = fish.cites ? `<span style="display:inline-block; background:#1976d2; color:white; padding:3px 10px; border-radius:15px; font-size:0.85em; font-weight:bold;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa">無紀錄</span>';
 
             return `

@@ -2,7 +2,7 @@ const searchBtn = document.querySelector('#searchBtn');
 const fishInput = document.querySelector('#fishName');
 const resultDiv = document.querySelector('#result');
 
-// 💡 1. 維基百科 API 萃取引擎 (移除 inline styles，改用 class)
+// 💡 1. 維基百科 API 萃取引擎
 window.fetchWikiData = async function(sciName, btnElement) {
     const targetDiv = btnElement.parentElement.nextElementSibling;
     const originalBtnText = btnElement.innerHTML;
@@ -45,7 +45,7 @@ window.fetchWikiData = async function(sciName, btnElement) {
     }
 };
 
-// 💡 保育等級燈號轉換器 (維持燈號的行內樣式以確保顏色準確)
+// 💡 保育等級燈號轉換器
 function getConservationStyle(code) {
     if (!code || code === 'null') return { label: '無紀錄', bg: '#f5f5f5', color: '#aaa', border: '#eee' };
     const upperCode = code.toUpperCase();
@@ -73,7 +73,7 @@ searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
 
-    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在檢索物種並載入保育評估資料...</p>`;
+    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在過濾名錄，確保僅顯示魚類資料...</p>`;
 
     try {
         const matchUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(keyword)}&best=no&bio_group=魚類`;
@@ -87,6 +87,8 @@ searchBtn.addEventListener('click', async () => {
         ]);
 
         const resultMap = new Map();
+        const confirmedFishIds = new Set(); // 用來記錄從 bio_group=魚類 抓到的純種魚類 ID
+
         const addTaxonData = (dataList) => {
             if (dataList) dataList.forEach(item => { if (item.kingdom === 'Animalia') resultMap.set(item.taxon_id, item); });
         };
@@ -95,7 +97,10 @@ searchBtn.addEventListener('click', async () => {
 
         const matchIdsToFetch = [];
         if (matchRes.data) {
-            matchRes.data.forEach(item => { if (!resultMap.has(item.taxon_id)) matchIdsToFetch.push(item.taxon_id); });
+            matchRes.data.forEach(item => { 
+                confirmedFishIds.add(item.taxon_id); // 標記為確認的魚類
+                if (!resultMap.has(item.taxon_id)) matchIdsToFetch.push(item.taxon_id); 
+            });
         }
 
         const detailPromises = matchIdsToFetch.slice(0, 15).map(async (tid) => {
@@ -112,15 +117,38 @@ searchBtn.addEventListener('click', async () => {
             if (detail && detail.kingdom === 'Animalia') resultMap.set(detail.taxon_id, detail);
         });
 
-        let fishList = Array.from(resultMap.values()).filter(fish => fish.rank === 'Species');
+        // 💡 核心過濾器：階層必須是 Species，且血統必須是真正的「魚類」
+        let fishList = Array.from(resultMap.values()).filter(fish => {
+            // 條件 1：必須是種 (Species) 且為動物界
+            if (fish.rank !== 'Species') return false;
+            if (fish.kingdom !== 'Animalia') return false;
+
+            // 條件 2：如果是從 nameMatch (已限定魚類) 抓到的，絕對放行
+            if (confirmedFishIds.has(fish.taxon_id)) return true;
+
+            // 條件 3：透過科學綱名 (Class) 判斷
+            const fishClasses = ['Actinopteri', 'Actinopterygii', 'Chondrichthyes', 'Myxini', 'Cephalaspidomorphi', 'Sarcopterygii', 'Elasmobranchii', 'Holocephali'];
+            if (fish.class && fishClasses.includes(fish.class)) return true;
+            if (fish.class_c && fish.class_c.includes('魚')) return true;
+
+            // 條件 4：防呆機制，透過科名與中文名過濾「假魚」
+            const nameStr = (fish.family_c || '') + (fish.common_name_c || '');
+            const isFishLike = ['魚', '鯊', '魟', '鰻', '鯛', '鮨', '慈鯛', '鯉', '鯰', '鰍', '鮭', '鯖', '鮪'].some(w => nameStr.includes(w));
+            const isFakeFish = ['鯨', '鱷', '墨魚', '魷魚', '鮑魚', '章魚', '娃娃魚', '甲魚', '魚狗', '海豚', '儒艮'].some(w => nameStr.includes(w));
+            
+            if (isFishLike && !isFakeFish) return true;
+
+            // 若都不符合，則剔除
+            return false;
+        });
 
         if (fishList.length === 0) {
-            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的物種 (Species) 紀錄。</div>`;
+            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的「魚類」紀錄。<br><small style="color:#888;">系統已自動過濾掉非魚類（如鳥類、昆蟲或甲殼類）的同名生物。</small></div>`;
             return;
         }
 
-        // 💡 3. 使用乾淨的 Class 渲染 HTML，並在底部加入資料來源
-        let htmlContent = `<p style="margin-bottom:20px; color:var(--text-muted); font-weight:bold;">共找到 ${fishList.length} 筆物種資料：</p>`;
+        // 💡 3. 渲染卡片結果
+        let htmlContent = `<p style="margin-bottom:20px; color:var(--text-muted); font-weight:bold;">共過濾出 ${fishList.length} 筆魚類資料：</p>`;
         
         htmlContent += fishList.map(fish => {
             const sciName = fish.simple_name || fish.scientific_name || "Unknown";
@@ -175,7 +203,6 @@ searchBtn.addEventListener('click', async () => {
             `;
         }).join('');
 
-        // 💡 加入專業的版權與資料來源宣告
         htmlContent += `
             <div class="data-credits">
                 資料來源：<a href="https://taicol.tw/" target="_blank">臺灣物種名錄 (TaiCOL)</a> | 

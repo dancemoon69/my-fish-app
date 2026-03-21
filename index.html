@@ -3,11 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>蒼海契約：臺灣水域動植幻獸秘典</title>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0077be">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="蒼海秘典">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <title>🔱 蒼海契約：臺灣水域動植幻獸秘典</title>
+    
     <style>
+        /* =========================================
+           1. 視覺基調：深邃海洋與禁忌秘典
+        ========================================= */
         :root {
             --primary-blue: #0077be;
             --dark-blue: #00568c;
@@ -18,108 +30,167 @@
             --text-main: #333;
             --text-muted: #666;
         }
+
         body { 
-            font-family: 'Segoe UI', 'Noto Sans TC', sans-serif; 
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif; 
             background-color: var(--bg-light); 
             margin: 0; 
             padding: 20px; 
             color: var(--text-main); 
+            line-height: 1.6;
         }
+
         .container { max-width: 900px; margin: 0 auto; }
-        
+
+        /* =========================================
+           2. 標題與中二潤飾區
+        ========================================= */
         .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { color: var(--primary-blue); font-size: 2.2em; margin-bottom: 10px; }
-        .header .intro-text { font-size: 1em; color: var(--text-muted); font-style: italic; margin-bottom: 15px; }
+        .header h1 { 
+            color: var(--primary-blue); 
+            font-size: 2.2em; 
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        .header .intro-text { 
+            font-size: 1em; 
+            color: var(--text-muted); 
+            font-style: italic; 
+            margin-bottom: 15px; 
+        }
         
         .header .warning { 
             color: #555; 
             font-size: 0.9em; 
-            background: #fff; 
-            padding: 20px; 
-            border-radius: 16px; 
+            background: #ffffff; 
+            padding: 25px; 
+            border-radius: 20px; 
             display: inline-block; 
             margin-top: 10px; 
             border: 1px solid #e0e0e0;
             line-height: 1.8;
             text-align: left;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            max-width: 700px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            max-width: 750px;
         }
         .warning b { color: var(--primary-blue); }
 
+        /* =========================================
+           3. 檢索指引區 (學名斜體)
+        ========================================= */
         .search-guide {
             text-align: left;
             font-size: 0.85em;
             color: #777;
-            margin: 0 auto 10px;
-            max-width: 700px;
-            padding-left: 10px;
-            border-left: 3px solid var(--primary-blue);
+            margin: 0 auto 12px;
+            max-width: 750px;
+            padding-left: 12px;
+            border-left: 4px solid var(--primary-blue);
         }
+        .search-guide i { font-style: italic; }
 
-        .search-box { display: flex; gap: 12px; margin-bottom: 30px; }
+        /* =========================================
+           4. 搜尋啟動陣 (Search Box)
+        ========================================= */
+        .search-box { 
+            display: flex; 
+            gap: 12px; 
+            margin-bottom: 30px; 
+            max-width: 750px;
+            margin-left: auto;
+            margin-right: auto;
+        }
         #fishName { 
             flex: 1; 
-            padding: 15px; 
+            padding: 15px 20px; 
             font-size: 1.1em; 
             border: 2px solid #ddd; 
-            border-radius: 12px; 
+            border-radius: 14px; 
             outline: none; 
-            transition: 0.3s; 
+            transition: 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         #fishName:focus { 
             border-color: var(--primary-blue); 
-            box-shadow: 0 0 8px rgba(0,119,190,0.2); 
+            box-shadow: 0 0 12px rgba(0,119,190,0.15); 
         }
         #searchBtn { 
-            padding: 15px 30px; 
+            padding: 15px 35px; 
             background: var(--primary-blue); 
             color: white; 
             border: none; 
-            border-radius: 12px; 
+            border-radius: 14px; 
             cursor: pointer; 
             font-weight: bold; 
-            transition: 0.2s; 
+            transition: 0.2s;
+            font-size: 1.1em;
         }
-        #searchBtn:hover { background: var(--dark-blue); }
+        #searchBtn:hover { 
+            background: var(--dark-blue); 
+            transform: translateY(-1px);
+        }
 
+        /* =========================================
+           5. 幻獸卡片佈局 (左右並排)
+        ========================================= */
         .fish-card {
             background: #fff; 
-            border-radius: 16px; 
-            padding: 25px; 
-            margin-bottom: 24px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06); 
+            border-radius: 18px; 
+            padding: 28px; 
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07); 
             display: flex; 
-            gap: 25px;
+            gap: 28px;
             align-items: flex-start; 
-            transition: 0.2s; 
-            border: 1px solid #eef2f6;
+            transition: 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+            border: 1px solid #f0f4f8;
         }
-        .fish-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0, 119, 190, 0.12); }
+        .fish-card:hover { 
+            transform: translateY(-4px); 
+            box-shadow: 0 15px 40px rgba(0, 119, 190, 0.12); 
+        }
         
         .fish-img-container {
-            flex: 0 0 240px; height: 160px; background: #fdfdfd; border-radius: 12px;
-            overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #f0f0f0;
+            flex: 0 0 250px; 
+            height: 170px; 
+            background: #fdfdfd; 
+            border-radius: 14px;
+            overflow: hidden; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border: 1px solid #f1f1f1;
         }
         .fish-img-container img { width: 100%; height: 100%; object-fit: contain; }
         
         .fish-info { flex: 1; }
-        .fish-title { margin: 0; color: var(--primary-blue); font-size: 1.6em; font-weight: bold; }
-        .fish-sci-name { font-size: 1.1em; color: var(--danger-red); font-style: italic; margin-bottom: 12px; opacity: 0.9; }
-        .aliases-box { font-size: 0.9em; color: #666; background: #f8f9fa; padding: 8px 12px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ddd; }
+        .fish-title { margin: 0; color: var(--primary-blue); font-size: 1.7em; font-weight: bold; }
+        .fish-sci-name { font-size: 1.15em; color: var(--danger-red); font-style: italic; margin-bottom: 12px; }
+        .aliases-box { 
+            font-size: 0.9em; 
+            color: #666; 
+            background: #f8f9fa; 
+            padding: 10px 14px; 
+            border-radius: 10px; 
+            margin-bottom: 15px; 
+            border-left: 5px solid #e0e0e0; 
+        }
         
-        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.9em; margin-bottom: 15px; }
-        .data-item strong { color: #888; font-size: 0.85em; display: block; margin-bottom: 2px; }
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.95em; margin-bottom: 18px; }
+        .data-item strong { color: #999; font-size: 0.8em; display: block; margin-bottom: 3px; text-transform: uppercase; }
 
+        /* =========================================
+           6. 保育狀態與公約 (Grid 固定對齊)
+        ========================================= */
         .conservation-section {
-            margin: 15px 0;
-            padding-top: 15px;
-            border-top: 1px solid #f0f0f0;
+            margin: 18px 0;
+            padding-top: 18px;
+            border-top: 1px solid #f2f2f2;
         }
         .conservation-tags {
             display: grid;
             grid-template-columns: repeat(3, 1fr); 
-            gap: 10px;
+            gap: 15px;
         }
         .tag-group {
             display: flex;
@@ -129,37 +200,78 @@
         }
         .tag-label {
             font-size: 0.75em;
-            color: #aaa;
+            color: #bbb;
             font-weight: bold;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
         }
 
-        .action-buttons { display: flex; gap: 8px; padding-top: 15px; flex-wrap: wrap; }
+        /* =========================================
+           7. 外部連結按鈕
+        ========================================= */
+        .action-buttons { display: flex; gap: 10px; padding-top: 15px; flex-wrap: wrap; }
         .btn { 
-            flex: 1; min-width: 100px; padding: 10px; border-radius: 8px; 
-            font-weight: bold; cursor: pointer; border: none; color: white; 
-            text-decoration: none; text-align: center; font-size: 0.85em; transition: 0.2s; 
+            flex: 1; 
+            min-width: 110px; 
+            padding: 12px; 
+            border-radius: 10px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border: none; 
+            color: white; 
+            text-decoration: none; 
+            text-align: center; 
+            font-size: 0.85em; 
+            transition: 0.2s; 
         }
         .btn-wiki { background: var(--primary-blue); }
         .btn-taicol { background: #ef6c00; }
         .btn-fishbase { background: var(--accent-green); }
         .btn-sealife { background: var(--sealife-teal); }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
-        .wiki-content { display: none; margin-top: 15px; padding: 18px; background: #f0f7ff; border-radius: 12px; border-left: 5px solid var(--primary-blue); font-size: 0.95em; line-height: 1.7; }
+        .wiki-content { 
+            display: none; 
+            margin-top: 18px; 
+            padding: 20px; 
+            background: #f0f7ff; 
+            border-radius: 14px; 
+            border-left: 6px solid var(--primary-blue); 
+            font-size: 1em; 
+            line-height: 1.8; 
+            text-align: justify;
+        }
         
-        .data-credits { text-align: center; font-size: 0.85em; color: #999; margin-top: 50px; padding: 30px; border-top: 1px solid #eee; line-height: 2; }
+        /* =========================================
+           8. 頁尾聲明與來源
+        ========================================= */
+        .data-credits { 
+            text-align: center; 
+            font-size: 0.85em; 
+            color: #999; 
+            margin-top: 60px; 
+            padding: 40px 20px; 
+            border-top: 1px solid #eee; 
+            line-height: 2.2; 
+        }
         .data-credits a { color: var(--primary-blue); text-decoration: none; font-weight: bold; }
-        
+        .data-credits a:hover { text-decoration: underline; }
+
+        /* =========================================
+           9. 響應式微調
+        ========================================= */
         @media (max-width: 600px) {
-            .fish-card { flex-direction: column; padding: 20px; }
-            .fish-img-container { width: 100%; flex: none; height: 180px; }
+            .fish-card { flex-direction: column; padding: 22px; }
+            .fish-img-container { width: 100%; flex: none; height: 190px; }
             .search-box { flex-direction: column; }
+            .conservation-tags { grid-template-columns: repeat(3, 1fr); gap: 10px; }
             .btn { min-width: 140px; }
+            .header h1 { font-size: 1.8em; }
         }
     </style>
 </head>
 <body>
+
     <div class="container">
         <div class="header">
             <h1>🔱 蒼海契約：臺灣水域動植幻獸秘典</h1>
@@ -197,6 +309,7 @@
             <br>系統製作：<a href="https://eatfishnlife.com/" target="_blank">水底萬事屋</a>
         </div>
     </div>
+
     <script>
         (function() {
             const script = document.createElement('script');
@@ -205,5 +318,6 @@
             document.body.appendChild(script);
         })();
     </script>
+
 </body>
 </html>

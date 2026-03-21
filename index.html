@@ -1,219 +1,309 @@
-const searchBtn = document.querySelector('#searchBtn');
-const fishInput = document.querySelector('#fishName');
-const resultDiv = document.querySelector('#result');
-
-// 💡 0. 支援 Enter 鍵直接搜尋
-fishInput.addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        e.preventDefault(); 
-        searchBtn.click();
-    }
-});
-
-// 💡 1. 百科圖鑑引擎
-window.fetchWikiData = async function(sciName, btnElement) {
-    const targetDiv = btnElement.parentElement.nextElementSibling;
-    const originalBtnText = btnElement.innerHTML;
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>認識臺灣水生動物圖鑑</title>
     
-    btnElement.innerHTML = '⏳ 載入中...';
-    btnElement.disabled = true;
-    targetDiv.style.display = 'block';
-    targetDiv.innerHTML = '<div style="text-align:center; color:#666;">正在載入百科文獻...</div>';
+    <style>
+        /* =========================================
+           1. 全域與版面基礎設定
+        ========================================= */
+        :root {
+            --primary-blue: #0077be;
+            --dark-blue: #00568c;
+            --accent-green: #004d40;
+            --danger-red: #d32f2f;
+            --bg-light: #f4f7f9;
+            --text-main: #333;
+            --text-muted: #666;
+        }
 
-    const wikiTitle = sciName.replace(/\s+/g, '_');
-    
-    try {
-        let res = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
-        if (!res.ok) res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
-        if (!res.ok) throw new Error('Wiki查無資料');
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px; /* 限制最大寬度，讓在電腦螢幕上不會太寬 */
+            margin: 0 auto;
+            background: transparent;
+        }
+
+        /* =========================================
+           2. 標題與搜尋框 UI 設計
+        ========================================= */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+
+        .header h1 {
+            color: var(--primary-blue);
+            margin: 0 0 10px 0;
+            font-size: 2.2em;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 0.95em;
+            margin: 0;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        #fishName {
+            flex: 1;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        #fishName:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 4px 12px rgba(0, 119, 190, 0.15);
+        }
+
+        #searchBtn {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.1s;
+            box-shadow: 0 4px 10px rgba(0, 119, 190, 0.2);
+            white-space: nowrap;
+        }
+
+        #searchBtn:hover {
+            background-color: var(--dark-blue);
+        }
+
+        #searchBtn:active {
+            transform: scale(0.98);
+        }
+
+        /* =========================================
+           3. 魚類卡片專屬 UI 設計 (配合 JS 渲染)
+        ========================================= */
+        .fish-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e0e8f0;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .fish-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(0, 119, 190, 0.15);
+        }
+
+        .fish-title {
+            margin: 0 0 4px 0;
+            color: var(--primary-blue);
+            font-size: 1.4em;
+            font-weight: 700;
+        }
+
+        .fish-sci-name {
+            font-size: 1.05em;
+            color: var(--danger-red);
+            margin-bottom: 16px;
+            font-style: italic;
+        }
+
+        .fish-aliases {
+            font-size: 0.9em;
+            color: var(--text-muted);
+            background: #f8f9fa;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-blue);
+            margin-bottom: 16px;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            font-size: 0.9em;
+            color: #444;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .data-item strong {
+            color: var(--text-muted);
+        }
+
+        /* 保育狀態區塊 */
+        .conservation-box {
+            background: #fdfaf6;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid #f0e6d2;
+            margin-bottom: 20px;
+        }
+
+        .conservation-title {
+            font-size: 0.85em;
+            color: #795548;
+            font-weight: 700;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #f0e6d2;
+            padding-bottom: 6px;
+        }
+
+        .conservation-tags {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tag-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .tag-label {
+            font-size: 0.75em;
+            color: #888;
+        }
+
+        /* 按鈕群組 */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            border-top: 1px dashed #e0e0e0;
+            padding-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-wiki, .btn-fishbase {
+            flex: 1;
+            min-width: 140px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.95em;
+            text-align: center;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-wiki { background: var(--primary-blue); color: #ffffff; }
+        .btn-wiki:hover { background: var(--dark-blue); }
+        .btn-wiki:disabled { background: #a0c4da; cursor: not-allowed; }
         
-        const data = await res.json();
-        let imgHtml = (data.thumbnail && data.thumbnail.source) 
-            ? `<img src="${data.thumbnail.source}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px; float: right; margin: 0 0 10px 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">` 
-            : '';
+        .btn-fishbase { background: var(--accent-green); color: #ffffff; }
+        .btn-fishbase:hover { background: #00332a; }
 
-        targetDiv.innerHTML = `
-            <div style="text-align: justify; overflow: hidden; padding-top:10px;">
-                ${imgHtml}
-                <p style="margin: 0 0 8px 0; color: #2e7d32; font-weight:bold;">📖 百科摘要 (${data.title})：</p>
-                <p style="margin: 0;">${data.extract || '暫無詳細說明。'}</p>
-                <div style="clear: both; text-align: right; margin-top: 15px;">
-                    <a href="${data.content_urls.desktop.page}" target="_blank" style="color: #0077be; font-weight: bold; text-decoration: none;">➔ 閱讀完整百科</a>
-                </div>
+        /* 百科內容展開區 */
+        .wiki-content {
+            display: none;
+            margin-top: 16px;
+            padding: 16px;
+            background: #f0f7ff;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-blue);
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: var(--text-main);
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 資料來源宣告 Footer */
+        .data-credits {
+            text-align: center;
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            line-height: 1.8;
+        }
+
+        .data-credits a {
+            color: var(--primary-blue);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .data-credits a:hover {
+            text-decoration: underline;
+        }
+
+        /* =========================================
+           4. RWD (手機版響應式設定)
+        ========================================= */
+        @media (max-width: 600px) {
+            .search-box {
+                flex-direction: column; /* 手機上搜尋按鈕會掉到輸入框下方 */
+            }
+            .data-grid {
+                grid-template-columns: 1fr; /* 手機上資料變成單欄排列 */
+            }
+            .conservation-tags {
+                gap: 15px;
+            }
+            .header h1 {
+                font-size: 1.6em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🐟 認識臺灣水生動物圖鑑</h1>
+            <p>請輸入動物俗名、學名或科別（例如：石斑、吳郭魚、慈鯛科）</p>
+            <p style="color: #d32f2f; font-weight: bold; font-size: 0.9em; margin-top: 10px; background: #fff3f3; display: inline-block; padding: 5px 15px; border-radius: 20px;">
+                💡 註明：如果找到不是水生動物是正常的，因爲資料排除不了ＸＤＤＤＤ
+            </p>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="fishName" placeholder="開始探索圖鑑資料..." autocomplete="off">
+            <button id="searchBtn">🔍 開始檢索</button>
+        </div>
+
+        <div id="result">
             </div>
-        `;
-        btnElement.style.display = 'none';
-    } catch (error) {
-        targetDiv.innerHTML = `<div style="color:#d32f2f; text-align:center;">⚠️ 百科資料庫中暫無此學名的直接紀錄。</div>`;
-        btnElement.innerHTML = originalBtnText;
-        btnElement.disabled = false;
-    }
-};
+    </div>
 
-// 💡 2. 專業版：IUCN & 臺灣紅皮書 燈號轉換器 (去除「國家」二字)
-function getConservationStyle(code) {
-    if (!code || code === 'null') return { html: `<span style="display:inline-block; background:#f5f5f5; color:#aaa; border:1px solid #eee; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">無紀錄</span>` };
-    
-    const upperCode = code.toUpperCase();
-    
-    const styleMap = {
-        // --- 滅絕等級 ---
-        'EX': { label: '絕滅', bg: '#000000', color: '#fff', border: '#000' },
-        'EW': { label: '野外絕滅', bg: '#4a148c', color: '#fff', border: '#4a148c' },
-        'RE': { label: '區域滅絕', bg: '#311b92', color: '#fff', border: '#311b92' }, // 臺灣紅皮書特有
-        
-        // --- 全球受威脅等級 (IUCN) ---
-        'CR': { label: '極危', bg: '#d32f2f', color: '#fff', border: '#b71c1c' },
-        'EN': { label: '瀕危', bg: '#f44336', color: '#fff', border: '#d32f2f' },
-        'VU': { label: '易危', bg: '#ff9800', color: '#fff', border: '#f57c00' },
-        'NT': { label: '近危', bg: '#8bc34a', color: '#000', border: '#689f38' },
-        'LC': { label: '無危', bg: '#4caf50', color: '#fff', border: '#388e3c' },
-        'CD': { label: '依賴保育', bg: '#c0ca33', color: '#000', border: '#afb42b' },
-        
-        // --- 國家受威脅等級 (臺灣紅皮書專用，字首為 N，但顯示文字不加「國家」) ---
-        'NCR': { label: '極危', bg: '#d32f2f', color: '#fff', border: '#b71c1c' },
-        'NEN': { label: '瀕危', bg: '#f44336', color: '#fff', border: '#d32f2f' },
-        'NVU': { label: '易危', bg: '#ff9800', color: '#fff', border: '#f57c00' },
-        'NNT': { label: '近危', bg: '#8bc34a', color: '#000', border: '#689f38' },
-        'NLC': { label: '無危', bg: '#4caf50', color: '#fff', border: '#388e3c' },
-        
-        // --- 其他狀態 ---
-        'DD': { label: '數據缺乏', bg: '#9e9e9e', color: '#fff', border: '#757575' },
-        'NE': { label: '未評估', bg: '#e0e0e0', color: '#000', border: '#bdbdbd' },
-        'NA': { label: '不適用', bg: '#e0e0e0', color: '#000', border: '#bdbdbd' }
-    };
+    <script src="main.js"></script>
 
-    const config = styleMap[upperCode] || { label: '未知分級', bg: '#ffffff', color: '#000', border: '#ccc' };
-    
-    return { 
-        html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow:0 1px 3px rgba(0,0,0,0.1);">${config.label} (${upperCode})</span>` 
-    };
-}
-
-// 💡 3. 極速版搜尋邏輯
-searchBtn.addEventListener('click', async () => {
-    const keyword = fishInput.value.trim();
-    if (!keyword) return;
-
-    searchBtn.disabled = true;
-    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在極速檢索圖鑑資料...</p>`;
-
-    try {
-        const matchUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/nameMatch?name=${keyword}&best=no&bio_group=魚類`)}`;
-        const commonUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?common_name=${keyword}`)}`;
-        const groupUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?taxon_group=${keyword}`)}`;
-
-        const [matchRes, commonRes, groupRes] = await Promise.all([
-            fetch(matchUrl).then(r => r.json()).catch(() => ({ data: [] })),
-            fetch(commonUrl).then(r => r.json()).catch(() => ({ data: [] })),
-            fetch(groupUrl).then(r => r.json()).catch(() => ({ data: [] }))
-        ]);
-
-        const resultMap = new Map();
-        
-        const addTaxonData = (dataList) => {
-            if (dataList) {
-                dataList.forEach(item => { 
-                    if (!item.kingdom || item.kingdom === 'Animalia') resultMap.set(item.taxon_id, item); 
-                });
-            }
-        };
-        addTaxonData(commonRes.data);
-        addTaxonData(groupRes.data);
-
-        const matchIdsToFetch = new Set();
-        if (matchRes.data) {
-            matchRes.data.forEach(item => { 
-                if (!resultMap.has(item.taxon_id)) matchIdsToFetch.add(item.taxon_id); 
-            });
-        }
-
-        const detailPromises = Array.from(matchIdsToFetch).slice(0, 30).map(async (tid) => {
-            try {
-                const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?taxon_id=${tid}`)}`);
-                const json = await res.json();
-                return json.data ? (Array.isArray(json.data) ? json.data[0] : json.data) : null;
-            } catch (e) { return null; }
-        });
-
-        const fetchedDetails = await Promise.all(detailPromises);
-        fetchedDetails.forEach(detail => {
-            if (detail && (!detail.kingdom || detail.kingdom === 'Animalia')) {
-                resultMap.set(detail.taxon_id, detail);
-            }
-        });
-
-        let fishList = Array.from(resultMap.values()).filter(fish => {
-            const validRanks = ['species', 'subspecies', 'variety', 'form'];
-            const currentRank = fish.rank ? fish.rank.toLowerCase() : '';
-            return currentRank ? validRanks.includes(currentRank) : true;
-        });
-
-        if (fishList.length === 0) {
-            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的紀錄。<br><small style="color:#888;">提示：請確認輸入的名稱是否正確。</small></div>`;
-            searchBtn.disabled = false;
-            return;
-        }
-
-        // 💡 4. 渲染卡片結果
-        let htmlContent = `<p style="margin-bottom:20px; color:var(--text-muted); font-weight:bold;">共找到 ${fishList.length} 筆資料：</p>`;
-        
-        htmlContent += fishList.map(fish => {
-            const sciName = fish.simple_name || fish.scientific_name || "Unknown";
-            const alienMap = { 'native': '原生種', 'naturalized': '歸化種', 'invasive': '入侵種', 'cultured': '栽培豢養/養殖' };
-            const alienStatus = fish.alien_type ? (alienMap[fish.alien_type] || fish.alien_type) : '未標示';
-
-            const habitats = [];
-            if (fish.is_terrestrial) habitats.push('陸生');
-            if (fish.is_freshwater) habitats.push('淡水');
-            if (fish.is_brackish) habitats.push('半鹹水');
-            if (fish.is_marine) habitats.push('海洋');
-            const habitatStr = habitats.length > 0 ? habitats.join('、') : '未知';
-
-            const citesTag = fish.cites ? `<span style="display:inline-block; background:#1976d2; color:white; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-size:0.85em;">無紀錄</span>';
-            const iucnTag = getConservationStyle(fish.iucn).html;
-            
-            // 獨立渲染臺灣紅皮書狀態
-            const redlistTag = getConservationStyle(fish.redlist).html;
-            
-            const inTaiwan = fish.is_in_taiwan ? '<span style="color:#2e7d32; font-weight:bold;">✔</span>' : '<span style="color:var(--danger-red); font-weight:bold;">✖</span>';
-            const isEndemic = fish.is_endemic ? '<span style="color:#2e7d32; font-weight:bold;">✔</span>' : '<span style="color:#999;">✖</span>';
-
-            return `
-                <div class="fish-card">
-                    <h3 class="fish-title">🐟 ${fish.common_name_c || '未知中文名'}</h3>
-                    <div class="fish-sci-name">${sciName}</div>
-                    <div class="fish-aliases"><strong>別名：</strong> ${fish.alternative_name_c || '無'}</div>
-                    <div class="data-grid">
-                        <div class="data-item"><strong>地位：</strong> ${fish.taxon_status === 'accepted' ? '有效名' : '非有效名'}</div>
-                        <div class="data-item"><strong>棲地：</strong> <span style="color:var(--primary-blue); font-weight:500;">${habitatStr}</span></div>
-                        <div class="data-item"><strong>分布：</strong> ${inTaiwan} 臺灣 | ${isEndemic} 特有</div>
-                        <div class="data-item"><strong>性質：</strong> ${alienStatus}</div>
-                    </div>
-                    <div class="conservation-box">
-                        <div class="conservation-title">🛡️ 保育與受威脅狀態</div>
-                        <div class="conservation-tags">
-                            <div class="tag-group"><span class="tag-label">IUCN 紅皮書</span>${iucnTag}</div>
-                            <div class="tag-group"><span class="tag-label">臺灣紅皮書</span>${redlistTag}</div>
-                            <div class="tag-group"><span class="tag-label">華盛頓公約</span>${citesTag}</div>
-                        </div>
-                    </div>
-                    <div class="action-buttons" style="display: flex; gap: 10px; border-top: 1px dashed #e0e0e0; padding-top: 20px; flex-wrap: wrap;">
-                        <button class="btn-wiki" onclick="fetchWikiData('${sciName}', this)" style="flex: 1; min-width: 100px; padding: 12px; border-radius: 8px; font-weight: bold; background: var(--primary-blue); color: white; border: none; cursor: pointer;">📸 百科</button>
-                        <a href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank" style="flex: 1; min-width: 100px; padding: 12px; border-radius: 8px; font-weight: bold; background: #ef6c00; color: white; text-align: center; text-decoration: none;">🏷️ TaiCOL</a>
-                        <a href="https://www.fishbase.se/summary/${sciName.replace(/\s+/g, '-')}" target="_blank" style="flex: 1; min-width: 100px; padding: 12px; border-radius: 8px; font-weight: bold; background: var(--accent-green); color: white; text-align: center; text-decoration: none;">➔ FishBase</a>
-                    </div>
-                    <div class="wiki-content"></div>
-                </div>
-            `;
-        }).join('');
-
-        resultDiv.innerHTML = htmlContent;
-
-    } catch (error) {
-        console.error("❌ 搜尋錯誤:", error);
-        resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px; background:#fff3f3; border-radius:12px;">⚠️ API 連線逾時，請檢查網路或稍後再試。</div>`;
-    } finally {
-        searchBtn.disabled = false;
-    }
-});
+</body>
+</html>

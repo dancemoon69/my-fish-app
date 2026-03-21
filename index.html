@@ -12,6 +12,7 @@
             --primary-blue: #0077be;
             --dark-blue: #00568c;
             --accent-green: #004d40;
+            --sealife-teal: #00838f; /* SeaLifeBase 專用色 */
             --danger-red: #d32f2f;
             --bg-light: #f4f7f9;
             --text-main: #333;
@@ -53,7 +54,6 @@
         .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.9em; margin-bottom: 15px; }
         .data-item strong { color: #888; font-size: 0.85em; display: block; margin-bottom: 2px; }
 
-        /* 保育狀態排版 - Grid 確保欄位絕對對齊 */
         .conservation-section {
             margin: 15px 0;
             padding-top: 15px;
@@ -78,11 +78,18 @@
             letter-spacing: 0.5px;
         }
 
-        .action-buttons { display: flex; gap: 10px; padding-top: 15px; }
-        .btn { flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; color: white; text-decoration: none; text-align: center; font-size: 0.9em; transition: 0.2s; }
+        /* 🚀 更新按鈕區：因按鈕增加，改為 wrap 佈局 */
+        .action-buttons { display: flex; gap: 8px; padding-top: 15px; flex-wrap: wrap; }
+        .btn { 
+            flex: 1; min-width: 100px; padding: 10px; border-radius: 8px; 
+            font-weight: bold; cursor: pointer; border: none; color: white; 
+            text-decoration: none; text-align: center; font-size: 0.85em; transition: 0.2s; 
+        }
         .btn-wiki { background: var(--primary-blue); }
         .btn-taicol { background: #ef6c00; }
         .btn-fishbase { background: var(--accent-green); }
+        .btn-sealife { background: var(--sealife-teal); }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
         .wiki-content { display: none; margin-top: 15px; padding: 18px; background: #f0f7ff; border-radius: 12px; border-left: 5px solid var(--primary-blue); font-size: 0.95em; line-height: 1.7; }
         
@@ -94,6 +101,7 @@
             .fish-img-container { width: 100%; flex: none; height: 180px; }
             .search-box { flex-direction: column; }
             .conservation-tags { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+            .btn { min-width: 140px; }
         }
     </style>
 </head>
@@ -112,6 +120,7 @@
         <div class="data-credits">
             資料來源：<a href="https://taicol.tw/" target="_blank">TaiCOL</a> | 
             <a href="https://www.fishbase.se/" target="_blank">FishBase</a> | 
+            <a href="https://sealifebase.ca/" target="_blank">SeaLifeBase</a> | 
             <a href="https://zh.wikipedia.org/" target="_blank">Wikipedia</a>
             <br>※ 系統透過開放 API 介接，資訊僅供參考。
             <br>系統製作：<a href="https://eatfishnlife.com/" target="_blank">水底萬事屋</a>

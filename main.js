@@ -11,13 +11,13 @@ searchBtn.addEventListener('click', async () => {
     try {
         // --- 嚴格遵守官方說明書的三路並行搜尋 ---
         
-        // 路徑 1: nameMatch 模糊比對 (支援 bio_group)
+        // 路徑 1: nameMatch 模糊比對
         const matchUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(keyword)}&best=no&bio_group=魚類`;
         
         // 路徑 2: taxon 精確俗名比對 (抓取別名完全相符者)
         const commonUrl = `https://api.taicol.tw/v2/taxon?common_name=${encodeURIComponent(keyword)}`;
         
-        // 路徑 3: taxon_group 分類群比對 (如果使用者輸入「慈鯛科」)
+        // 路徑 3: taxon_group 分類群比對
         const groupUrl = `https://api.taicol.tw/v2/taxon?taxon_group=${encodeURIComponent(keyword)}`;
 
         // 同時發送請求
@@ -29,11 +29,11 @@ searchBtn.addEventListener('click', async () => {
 
         const resultMap = new Map();
 
-        // 整理路徑 2 & 3 的資料 (本身就是 taxon 詳細資料)
+        // 整理路徑 2 & 3 的資料
         const addTaxonData = (dataList) => {
             if (dataList) {
                 dataList.forEach(item => {
-                    // 確保是魚類 (透過界或海洋/淡水屬性過濾，因為 taxon 沒有 bio_group 參數)
+                    // 確認是動物界
                     if (item.kingdom === 'Animalia') {
                         resultMap.set(item.taxon_id, item);
                     }
@@ -53,8 +53,8 @@ searchBtn.addEventListener('click', async () => {
             });
         }
 
-        // 針對未取得詳細資料的 ID 進行反查 (避免請求過多，取前 10 筆)
-        const detailPromises = matchIdsToFetch.slice(0, 10).map(async (tid) => {
+        // 針對未取得詳細資料的 ID 進行反查 (避免請求過多，取前 15 筆)
+        const detailPromises = matchIdsToFetch.slice(0, 15).map(async (tid) => {
             const detailUrl = `https://api.taicol.tw/v2/taxon?taxon_id=${tid}`;
             try {
                 const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(detailUrl)}`);
@@ -70,20 +70,22 @@ searchBtn.addEventListener('click', async () => {
             }
         });
 
-        const fishList = Array.from(resultMap.values());
+        // 💡 核心過濾器：將整理好的清單，嚴格篩選出 rank 等於 'Species' 的項目
+        let fishList = Array.from(resultMap.values());
+        fishList = fishList.filter(fish => fish.rank === 'Species');
 
         if (fishList.length === 0) {
             resultDiv.innerHTML = `
                 <div style="padding:20px; text-align:center; background:#f8f9fa; border-radius:10px;">
-                    ❌ 找不到與「${keyword}」完全相符的紀錄。<br>
-                    <small style="color:#888;">提示：TaiCOL 系統不支援部分字串搜尋，請嘗試輸入更準確的完整俗名（例如：尼羅口孵非鯽）。</small>
+                    ❌ 找不到與「${keyword}」完全相符的「物種 (Species)」紀錄。<br>
+                    <small style="color:#888;">提示：資料庫中可能只有科(Family)或屬(Genus)的紀錄，或者請嘗試輸入完整的俗名。</small>
                 </div>`;
             return;
         }
 
         // --- 渲染結果 ---
         resultDiv.innerHTML = `
-            <p style="margin-bottom:15px; color:#666; font-size:0.9em;">共找到 ${fishList.length} 種物種：</p>
+            <p style="margin-bottom:15px; color:#666; font-size:0.9em;">共找到 ${fishList.length} 筆物種 (Species) 資料：</p>
             ${fishList.map(fish => {
                 const sciName = fish.simple_name || fish.scientific_name || "Unknown";
                 
@@ -94,7 +96,7 @@ searchBtn.addEventListener('click', async () => {
                     'cultured': '🏠 養殖種'
                 };
                 const alienStatus = alienMap[fish.alien_type] || '未標示';
-                const endemicTag = fish.is_endemic ? '<span style="color:#ef6c00; font-weight:bold;">✨ 特有種</span>' : '';
+                const endemicTag = fish.is_endemic ? '<span style="color:#ef6c00; font-weight:bold; background:#fff3e0; padding:2px 6px; border-radius:4px; margin-left:5px;">✨ 特有種</span>' : '';
 
                 return `
                     <div style="background: white; padding: 20px; border-radius: 12px; border: 2px solid #0077be; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
@@ -109,17 +111,17 @@ searchBtn.addEventListener('click', async () => {
 
                                 <table style="width: 100%; font-size: 0.85em; color: #444;">
                                     <tr>
-                                        <td><strong>地位：</strong> ${fish.taxon_status === 'accepted' ? '有效名' : '非有效名'}</td>
-                                        <td><strong>性質：</strong> ${alienStatus} ${endemicTag}</td>
+                                        <td style="padding: 3px 0;"><strong>地位：</strong> ${fish.taxon_status === 'accepted' ? '有效名' : '非有效名'}</td>
+                                        <td style="padding: 3px 0;"><strong>性質：</strong> ${alienStatus} ${endemicTag}</td>
                                     </tr>
                                     <tr>
-                                        <td><strong>階層：</strong> ${fish.rank || 'Species'}</td>
-                                        <td><strong>界名：</strong> ${fish.kingdom || 'Animalia'}</td>
+                                        <td style="padding: 3px 0;"><strong>階層：</strong> <span style="color:#2e7d32; font-weight:bold;">${fish.rank}</span></td>
+                                        <td style="padding: 3px 0;"><strong>界名：</strong> ${fish.kingdom || 'Animalia'}</td>
                                     </tr>
                                 </table>
                             </div>
                             <a href="https://www.fishbase.se/summary/${sciName.replace(/\s+/g, '-')}" target="_blank" 
-                               style="background: #0077be; color: white; padding: 10px 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.85em; margin-left: 10px; text-align: center;">
+                               style="background: #0077be; color: white; padding: 10px 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.85em; margin-left: 10px; text-align: center; white-space: nowrap;">
                                FishBase
                             </a>
                         </div>

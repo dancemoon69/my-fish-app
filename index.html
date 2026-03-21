@@ -23,6 +23,7 @@
             --accent-green: #004d40;
             --sealife-teal: #00838f;
             --fishdb-indigo: #1a237e;
+            --fao-amber: #ff8f00; /* 🚀 FAO 統計專用色 */
             --danger-red: #d32f2f;
             --bg-light: #f4f7f9;
             --text-main: #333;
@@ -89,12 +90,12 @@
         .tag-group { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
         .tag-label { font-size: 0.75em; color: #bbb; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; }
 
-        /* 🚀 按鈕區佈局 (已移除 TaiEOL) */
         .action-buttons { display: flex; gap: 8px; padding-top: 15px; flex-wrap: wrap; }
-        .btn { flex: 1; min-width: 110px; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; color: white; text-decoration: none; text-align: center; font-size: 0.85em; transition: 0.2s; }
+        .btn { flex: 1; min-width: 100px; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; border: none; color: white; text-decoration: none; text-align: center; font-size: 0.8em; transition: 0.2s; }
         .btn-wiki { background: var(--primary-blue); }
         .btn-taicol { background: #ef6c00; }
         .btn-fishdb { background: var(--fishdb-indigo); }
+        .btn-fao { background: var(--fao-amber); } /* 🚀 FAO 按鈕 */
         .btn-fishbase { background: var(--accent-green); }
         .btn-sealife { background: var(--sealife-teal); }
         .btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
@@ -146,6 +147,7 @@
         <div class="data-credits">
             資料來源：<a href="https://taicol.tw/" target="_blank">TaiCOL</a> | 
             <a href="https://fishdb.sinica.edu.tw/" target="_blank">FishDB</a> | 
+            <a href="https://www.fao.org/fishery/en/statistics" target="_blank">FAO Statistics</a> | 
             <a href="https://www.fishbase.se/" target="_blank">FishBase</a> | 
             <a href="https://sealifebase.ca/" target="_blank">SeaLifeBase</a> | 
             <a href="https://zh.wikipedia.org/" target="_blank">Wikipedia</a>

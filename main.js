@@ -6,57 +6,60 @@ searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
 
-    resultDiv.innerHTML = `<p style="text-align:center; color:#0077be;">🌊 正在深度檢索「${keyword}」相關的所有物種...</p>`;
+    resultDiv.innerHTML = `<p style="text-align:center; color:#0077be;">🌊 正在掃描全資料庫，尋找所有與「${keyword}」相關的魚類...</p>`;
 
     try {
-        // --- 核心邏輯：同時發動兩組 API 進行聯集搜尋 ---
-        // 1. nameMatch: 比對名稱地位
-        const matchUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(keyword)}&best=no&bio_group=魚類`;
-        // 2. taxon?q=: 全文檢索（包含別名與說明）
-        const qUrl = `https://api.taicol.tw/v2/taxon?q=${encodeURIComponent(keyword)}&bio_group=魚類&limit=20`;
+        // 💡 關鍵策略：直接使用 v2/taxon 的 q 參數進行「全文廣域搜尋」
+        // 不使用 bio_group=魚類 以防部分物種標籤分類不完整導致漏失
+        // limit 設定為 50，確保所有模糊匹配的物種都能列出
+        const targetUrl = `https://api.taicol.tw/v2/taxon?q=${encodeURIComponent(keyword)}&limit=50`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
-        const [matchRes, qRes] = await Promise.all([
-            fetch(`https://corsproxy.io/?${encodeURIComponent(matchUrl)}`).then(r => r.json()),
-            fetch(`https://corsproxy.io/?${encodeURIComponent(qUrl)}`).then(r => r.json())
-        ]);
+        const response = await fetch(proxyUrl);
+        const resData = await response.json();
+        
+        // 取得所有結果
+        let fishList = resData.data || [];
 
-        // 合併兩邊的 taxon_id，並利用 Set 去除重複項
-        const allIds = new Set([
-            ...(matchRes.data || []).map(i => i.taxon_id),
-            ...(qRes.data || []).map(i => i.taxon_id)
-        ]);
+        // 💡 再次過濾：確保回傳的結果中，界名是動物界 (Animalia)，且名稱中確實包含關鍵字
+        // 這可以過濾掉非魚類的雜訊
+        fishList = fishList.filter(fish => 
+            fish.kingdom === 'Animalia' && 
+            (
+                (fish.common_name_c && fish.common_name_c.includes(keyword)) ||
+                (fish.alternative_name_c && fish.alternative_name_c.includes(keyword)) ||
+                (fish.simple_name && fish.simple_name.includes(keyword))
+            )
+        );
 
-        if (allIds.size === 0) {
-            resultDiv.innerHTML = `❌ 找不到與「${keyword}」相關的紀錄。`;
+        if (fishList.length === 0) {
+            resultDiv.innerHTML = `❌ 找不到與「${keyword}」相關的模糊匹配紀錄。`;
             return;
         }
 
-        resultDiv.innerHTML = `<p style="text-align:center; color:#0077be;">🧬 找到 ${allIds.size} 種相關物種，正在載入詳細分類資料...</p>`;
-
-        // --- 批量抓取詳細資料 ---
-        const detailPromises = Array.from(allIds).slice(0, 15).map(async (tid) => {
-            const detailUrl = `https://api.taicol.tw/v2/taxon?taxon_id=${tid}`;
-            try {
-                const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(detailUrl)}`);
-                const json = await res.json();
-                return json.data ? json.data[0] : null;
-            } catch (e) { return null; }
+        // 排序：將主要俗名完全符合的排在最前面
+        fishList.sort((a, b) => {
+            if (a.common_name_c === keyword) return -1;
+            if (b.common_name_c === keyword) return 1;
+            return 0;
         });
 
-        const fishList = (await Promise.all(detailPromises)).filter(f => f !== null);
-
-        // --- 渲染結果清單 ---
         resultDiv.innerHTML = `
-            <p style="margin-bottom:15px; color:#666; font-size:0.9em;">「${keyword}」的相關物種清單：</p>
+            <p style="margin-bottom:15px; color:#666; font-size:0.9em;">
+                找到 ${fishList.length} 筆包含「${keyword}」的物種紀錄：
+            </p>
             ${fishList.map(fish => {
                 const mainName = fish.common_name_c || "未知俗名";
                 const sciName = fish.simple_name || fish.scientific_name || "Unknown";
-                const altNames = fish.alternative_name_c || "";
+                const altNames = fish.alternative_name_c || "無";
                 
-                // 依照你的要求顯示地位與外來性
-                const statusTag = fish.alien_type === 'invasive' ? '⚠️ 入侵種' : 
-                                 (fish.alien_type === 'cultured' ? '🏠 養殖種' : '🐟 原生種');
-                
+                // 外來種/原生種標籤邏輯
+                let alienTag = '';
+                if (fish.alien_type === 'invasive') alienTag = '<span style="background:#ffebee; color:#c62828; padding:2px 8px; border-radius:4px; font-weight:bold;">⚠️ 入侵種</span>';
+                else if (fish.alien_type === 'cultured') alienTag = '<span style="background:#e3f2fd; color:#1565c0; padding:2px 8px; border-radius:4px; font-weight:bold;">🏠 養殖種</span>';
+                else if (fish.alien_type === 'native') alienTag = '<span style="background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:4px; font-weight:bold;">🐟 原生種</span>';
+                else if (fish.alien_type) alienTag = `<span style="background:#f5f5f5; color:#616161; padding:2px 8px; border-radius:4px; font-weight:bold;">${fish.alien_type}</span>`;
+
                 const fishBaseUrl = `https://www.fishbase.se/summary/${sciName.replace(/\s+/g, '-')}`;
 
                 return `
@@ -66,28 +69,25 @@ searchBtn.addEventListener('click', async () => {
                                 <h3 style="margin: 0 0 8px 0; color: #0077be;">🐟 ${mainName}</h3>
                                 <div style="font-size: 1em; color: #d32f2f; margin-bottom: 8px;"><i>${sciName}</i></div>
                                 
-                                <div style="font-size: 0.85em; color: #555; background: #f0f7ff; padding: 8px; border-radius: 8px; margin-bottom: 10px;">
-                                    <strong>別名：</strong> ${altNames || '無'}
+                                <div style="font-size: 0.85em; color: #555; background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #0077be;">
+                                    <strong>別名：</strong> ${altNames}
                                 </div>
 
-                                <div style="font-size: 0.8em; color: #666; line-height: 1.6;">
+                                <div style="font-size: 0.85em; color: #666; line-height: 1.6;">
                                     <div><strong>地位：</strong> ${fish.taxon_status === 'accepted' ? '有效名' : '非有效名'}</div>
                                     <div><strong>階層：</strong> ${fish.rank} | <strong>界：</strong> ${fish.kingdom}</div>
-                                    <div style="margin-top:5px;">
-                                        <span style="background: ${fish.alien_type === 'invasive' ? '#ffebee' : '#e8f5e9'}; 
-                                                     color: ${fish.alien_type === 'invasive' ? '#c62828' : '#2e7d32'}; 
-                                                     padding: 2px 8px; border-radius: 4px; font-weight: bold;">
-                                            ${statusTag}
-                                        </span>
-                                        ${fish.is_endemic ? '<span style="margin-left:5px; background:#fff3e0; color:#ef6c00; padding:2px 8px; border-radius:4px;">✨ 特有種</span>' : ''}
+                                    <div style="margin-top:8px;">
+                                        ${alienTag}
+                                        ${fish.is_endemic ? '<span style="margin-left:5px; background:#fff3e0; color:#ef6c00; padding:2px 8px; border-radius:4px; font-weight:bold;">✨ 特有種</span>' : ''}
                                     </div>
                                 </div>
                             </div>
                             <a href="${fishBaseUrl}" target="_blank" 
-                               style="background: #0077be; color: white; padding: 10px 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.9em; margin-left: 10px;">
+                               style="background: #0077be; color: white; padding: 10px 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.9em; margin-left: 10px; text-align:center;">
                                FishBase
                             </a>
                         </div>
+                        <div style="margin-top: 10px; font-size: 0.7em; color: #ccc;">物種編號: ${fish.taxon_id}</div>
                     </div>
                 `;
             }).join('')}

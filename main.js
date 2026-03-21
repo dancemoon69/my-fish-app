@@ -6,31 +6,32 @@ searchBtn.addEventListener('click', async () => {
     const name = fishInput.value.trim();
     if (!name) return;
 
-    resultDiv.innerHTML = `<p style="color: #0077be;">正在讀取 TaiCOL 官方資料... 🔍</p>`;
+    resultDiv.innerHTML = `<p style="color: #0077be;">正在解碼 TaiCOL 官方數據... 🔍</p>`;
 
-    // 💡 官方參數：bio_group=魚類, best=yes
     const targetUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(name)}&bio_group=魚類&best=yes`;
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
     try {
         const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error('伺服器回應異常');
-
         const data = await response.json();
         
-        // 💡 偵錯用：你可以按 F12 在 Console 看到完整的資料結構
-        console.log("TaiCOL 原始回傳：", data);
+        // 💡 關鍵偵錯：這行會在瀏覽器 Console (F12) 印出完整的資料結構
+        console.log("TaiCOL 回傳完整物件:", data);
 
         if (data.data && data.data.length > 0) {
             const fish = data.data[0];
 
-            // 💡 TaiCOL v2 關鍵欄位對應 (嘗試多種可能)
-            const commonName = fish.common_name_c || fish.common_name || fish.name || name;
-            const sciNameFull = fish.scientific_name || fish.scientificName || "Unknown species";
-            const familyName = fish.family || fish.family_c || "（未分類）";
+            // 💡 自動尋找學名 (嘗試所有可能的欄位名稱)
+            const sciNameFull = fish.scientificName || fish.scientific_name || fish.scientific_name_full || fish.name || "Unknown";
+            
+            // 💡 自動尋找中文名
+            const commonName = fish.commonName || fish.common_name_c || fish.common_name || name;
 
-            // 格式化學名：只取前兩個字 (屬名 種小名)
-            const cleanSci = sciNameFull.split(' ').slice(0, 2).join(' ');
+            // 💡 自動尋找科名
+            const familyName = fish.family || fish.family_c || fish.family_name || "（未分類）";
+
+            // 格式化學名 (只取前兩個字，例如 Coryphaena hippurus)
+            const cleanSci = sciNameFull !== "Unknown" ? sciNameFull.split(' ').slice(0, 2).join(' ') : "Unknown";
 
             resultDiv.innerHTML = `
                 <div style="background: white; padding: 20px; border-radius: 15px; border: 2px solid #0077be; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
@@ -41,13 +42,12 @@ searchBtn.addEventListener('click', async () => {
                     <a href="https://www.fishbase.se/summary/${cleanSci.replace(/\s+/g, '-')}" 
                        target="_blank" 
                        style="display: block; background: #0077be; color: white; text-align: center; padding: 12px; text-decoration: none; border-radius: 8px; font-weight: bold;">
-                       ➔ 查看 FishBase 全球詳細圖鑑
+                       ➔ 前往 FishBase 查看詳細圖鑑
                     </a>
-                    <p style="font-size: 0.75em; color: #999; margin-top: 10px; text-align: center;">資料來源：TaiCOL v2 API</p>
                 </div>
             `;
         } else {
-            resultDiv.innerHTML = `❌ 在台灣名錄中找不到「${name}」。`;
+            resultDiv.innerHTML = `❌ 找不到「${name}」，請確認名稱是否正確。`;
         }
     } catch (error) {
         console.error("連線錯誤:", error);

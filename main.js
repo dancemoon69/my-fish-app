@@ -91,22 +91,14 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 🚀 核心過濾器：階層過濾 + 生物界域深度封印
+        // 🚀 核心過濾器
         let list = Array.from(resultMap.values()).filter(f => {
-            // A. 階層檢查 (僅留 種、亞種、變種、型)
             const rank = (f.rank || '').toLowerCase();
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
             if (!validRanks.includes(rank)) return false;
 
-            // B. 異界封印：轉為字串進行全面掃描，徹底排除真菌、細菌、古菌與所有指定的病毒域
             const dataStr = JSON.stringify(f).toLowerCase();
-            const forbiddenTerms = [
-                'fungi', 'archaea', 'bacteria', 'virus', 'viruses', 
-                'duplodnaviria', 'monodnaviria', 'riboviria', 
-                'ribozyviria', 'varidnaviria', 'incertae sedis'
-            ];
-            
-            // 若命中任何一項禁語，則封印該卷宗
+            const forbiddenTerms = ['fungi', 'archaea', 'bacteria', 'virus', 'viruses', 'duplodnaviria', 'monodnaviria', 'riboviria', 'ribozyviria', 'varidnaviria', 'incertae sedis'];
             if (forbiddenTerms.some(term => dataStr.includes(term))) return false;
 
             return true;
@@ -122,10 +114,12 @@ searchBtn.addEventListener('click', async () => {
         
         resultDiv.innerHTML = list.map(fish => {
             const sciName = fish.scientific_name || fish.simple_name;
-            const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:3px 10px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
+            const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
             const rankLabel = (fish.rank || '').toLowerCase() === 'species' ? '種' : '亞種';
             
+            // 🚀 生成外部連結
             const slug = sciName.replace(/\s+/g, '-');
+            const fishDbUrl = `https://fishdb.sinica.edu.tw/chi/species.php?science=${sciName.replace(/\s+/g, '+')}`; // 🚀 新增 FishDB
 
             return `
                 <div class="fish-card">
@@ -163,6 +157,7 @@ searchBtn.addEventListener('click', async () => {
                         <div class="action-buttons">
                             <button class="btn btn-wiki" onclick="fetchWikiData('${sciName}', this)">📸 百科描述</button>
                             <a class="btn btn-taicol" href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank">🏷️ TaiCOL</a>
+                            <a class="btn btn-fishdb" href="${fishDbUrl}" target="_blank">🏛️ FishDB</a>
                             <a class="btn btn-fishbase" href="https://www.fishbase.se/summary/${slug}" target="_blank">➔ FishBase</a>
                             <a class="btn btn-sealife" href="https://sealifebase.ca/summary/${slug}" target="_blank">➔ SeaLifeBase</a>
                         </div>
@@ -172,15 +167,14 @@ searchBtn.addEventListener('click', async () => {
             `;
         }).join('');
 
+        // 圖片載入
         list.forEach(async (fish) => {
             const sciName = fish.scientific_name || fish.simple_name;
             const imgDiv = document.getElementById(`img-${fish.taxon_id}`);
             const slug = sciName.replace(/\s+/g, '_');
-            
             try {
                 let wikiRes = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${slug}`);
                 if (!wikiRes.ok) wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
-                
                 const data = await wikiRes.json();
                 if (data.thumbnail) {
                     imgDiv.innerHTML = `<img src="${data.thumbnail.source}" alt="${sciName}" onerror="this.parentElement.style.display='none'">`;
@@ -191,7 +185,7 @@ searchBtn.addEventListener('click', async () => {
         });
 
     } catch (error) {
-        resultDiv.innerHTML = '<p style="text-align:center; color:red; margin-top:50px;">⚠️ 連線失敗，請檢查網路狀態。</p>';
+        resultDiv.innerHTML = '<p style="text-align:center; color:red;">⚠️ 連線失敗，請檢查網路狀態。</p>';
     } finally {
         searchBtn.disabled = false;
     }

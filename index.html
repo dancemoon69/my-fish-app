@@ -53,7 +53,7 @@
         .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.9em; margin-bottom: 15px; }
         .data-item strong { color: #888; font-size: 0.85em; display: block; margin-bottom: 2px; }
 
-        /* 保育狀態排版 - 🚀 改用 Grid 確保欄位絕對對齊 */
+        /* 保育狀態排版 - Grid 確保欄位絕對對齊 */
         .conservation-section {
             margin: 15px 0;
             padding-top: 15px;
@@ -61,15 +61,14 @@
         }
         .conservation-tags {
             display: grid;
-            /* 💡 強制均分為三欄，這樣標籤的起始點永遠會對齊，不受內容長度影響 */
             grid-template-columns: repeat(3, 1fr); 
             gap: 10px;
         }
         .tag-group {
             display: flex;
             flex-direction: column;
-            gap: 8px; /* 增加標題與內容的距離 */
-            align-items: flex-start; /* 靠左對齊 */
+            gap: 8px;
+            align-items: flex-start;
         }
         .tag-label {
             font-size: 0.75em;
@@ -94,7 +93,6 @@
             .fish-card { flex-direction: column; padding: 20px; }
             .fish-img-container { width: 100%; flex: none; height: 180px; }
             .search-box { flex-direction: column; }
-            /* 手機版若寬度不夠，可改為兩欄或單欄 */
             .conservation-tags { grid-template-columns: repeat(3, 1fr); gap: 10px; }
         }
     </style>

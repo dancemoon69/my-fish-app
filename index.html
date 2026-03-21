@@ -3,13 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-
     <title>臺灣水生動物圖鑑</title>
-    
     <style>
         :root {
             --primary-blue: #0077be;
@@ -20,107 +17,61 @@
             --text-main: #333;
             --text-muted: #666;
         }
-
-        body {
-            font-family: 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
-            background-color: var(--bg-light);
-            margin: 0;
-            padding: 20px;
-        }
-
+        body { font-family: 'Segoe UI', 'Noto Sans TC', sans-serif; background-color: var(--bg-light); margin: 0; padding: 20px; }
         .container { max-width: 900px; margin: 0 auto; }
-
-        .header { text-align: center; margin-bottom: 30px; padding-top: 20px; }
-        .header h1 { color: var(--primary-blue); margin: 0 0 10px 0; font-size: 2.2em; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: var(--primary-blue); font-size: 2.2em; margin-bottom: 10px; }
         .header .warning { 
             color: var(--danger-red); font-weight: bold; font-size: 0.85em; 
-            background: #fff3f3; padding: 8px 15px; border-radius: 20px; 
+            background: #fff3f3; padding: 8px 20px; border-radius: 20px; 
             display: inline-block; margin-top: 10px; border: 1px solid #ffcdd2;
         }
-
         .search-box { display: flex; gap: 12px; margin-bottom: 30px; }
-        #fishName {
-            flex: 1; padding: 15px 20px; font-size: 1.1em;
-            border: 2px solid #ddd; border-radius: 12px; outline: none;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-
-        #searchBtn {
-            padding: 15px 30px; font-size: 1.1em; background-color: var(--primary-blue);
-            color: white; border: none; border-radius: 12px; cursor: pointer;
-            font-weight: bold; white-space: nowrap;
-        }
-
-        /* 魚類卡片佈局 */
+        #fishName { flex: 1; padding: 15px; font-size: 1.1em; border: 2px solid #ddd; border-radius: 12px; outline: none; }
+        #searchBtn { padding: 15px 30px; background: var(--primary-blue); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; }
+        
         .fish-card {
-            background: #ffffff; border-radius: 16px; padding: 24px;
-            margin-bottom: 24px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e0e8f0; display: flex; gap: 25px;
-            align-items: flex-start; transition: 0.2s ease;
+            background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); display: flex; gap: 25px;
+            align-items: flex-start; transition: 0.2s; border: 1px solid #e0e8f0;
         }
-
-        .fish-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0, 119, 190, 0.15); }
-
+        .fish-card:hover { transform: translateY(-3px); }
         .fish-img-container {
-            flex: 0 0 260px; height: 180px; background: #f8f9fa;
-            border-radius: 12px; overflow: hidden; display: flex;
-            align-items: center; justify-content: center; border: 1px solid #eee;
+            flex: 0 0 240px; height: 160px; background: #f8f9fa; border-radius: 12px;
+            overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #eee;
         }
-
         .fish-img-container img { width: 100%; height: 100%; object-fit: contain; }
-
         .fish-info { flex: 1; }
-        .fish-title { margin: 0 0 5px 0; color: var(--primary-blue); font-size: 1.5em; }
-        .fish-sci-name { font-size: 1.1em; color: var(--danger-red); margin-bottom: 12px; font-style: italic; }
-        .fish-aliases { font-size: 0.9em; color: var(--text-muted); background: #f8f9fa; padding: 8px 12px; border-radius: 8px; margin-bottom: 15px; }
-
-        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em; margin-bottom: 15px; }
-
-        .conservation-box { background: #fdfaf6; padding: 12px; border-radius: 10px; border: 1px solid #f0e6d2; margin-bottom: 15px; }
-        .conservation-title { font-size: 0.8em; font-weight: bold; color: #795548; margin-bottom: 8px; }
-        .conservation-tags { display: flex; gap: 15px; flex-wrap: wrap; }
-        .tag-group { display: flex; flex-direction: column; gap: 4px; }
+        .fish-title { margin: 0; color: var(--primary-blue); font-size: 1.5em; }
+        .fish-sci-name { font-size: 1.1em; color: var(--danger-red); font-style: italic; margin-bottom: 10px; }
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.9em; margin: 10px 0; }
+        .conservation-box { background: #fdfaf6; padding: 12px; border-radius: 10px; border: 1px solid #f0e6d2; margin: 10px 0; }
+        .conservation-tags { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px; }
+        .tag-group { display: flex; flex-direction: column; }
         .tag-label { font-size: 0.7em; color: #999; }
-
         .action-buttons { display: flex; gap: 10px; padding-top: 15px; border-top: 1px dashed #eee; }
-        .btn {
-            flex: 1; padding: 10px; border-radius: 8px; font-weight: bold;
-            text-align: center; text-decoration: none; font-size: 0.9em;
-            cursor: pointer; border: none; color: white;
-            display: flex; align-items: center; justify-content: center;
-        }
+        .btn { flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; border: none; color: white; text-decoration: none; text-align: center; font-size: 0.9em; }
         .btn-wiki { background: var(--primary-blue); }
         .btn-taicol { background: #ef6c00; }
         .btn-fishbase { background: var(--accent-green); }
-
-        .wiki-content { display: none; margin-top: 15px; padding: 15px; background: #f0f7ff; border-radius: 10px; font-size: 0.9em; border-left: 4px solid var(--primary-blue); }
-
+        .wiki-content { display: none; margin-top: 15px; padding: 15px; background: #f0f7ff; border-radius: 10px; border-left: 4px solid var(--primary-blue); font-size: 0.9em; }
         .data-credits { text-align: center; font-size: 0.8em; color: #888; margin-top: 40px; padding: 20px; border-top: 1px solid #ddd; line-height: 1.8; }
         .data-credits a { color: var(--primary-blue); text-decoration: none; font-weight: bold; }
-
-        @media (max-width: 600px) {
-            .fish-card { flex-direction: column; }
-            .fish-img-container { width: 100%; flex: none; height: 200px; }
-            .search-box { flex-direction: column; }
-        }
+        @media (max-width: 600px) { .fish-card { flex-direction: column; } .fish-img-container { width: 100%; flex: none; } }
     </style>
 </head>
 <body>
-
     <div class="container">
         <div class="header">
             <h1>🐟 臺灣水生動物圖鑑</h1>
             <p>輸入俗名、學名或科別進行檢索</p>
             <div class="warning">💡 註明：如果找到不是水生動物是正常的，因爲資料排除不了ＸＤＤＤＤ</div>
         </div>
-
         <div class="search-box">
             <input type="text" id="fishName" placeholder="搜尋關鍵字後按 Enter..." autocomplete="off">
             <button id="searchBtn">🔍 搜尋</button>
         </div>
-
         <div id="result"></div>
-
         <div class="data-credits">
             資料來源：<a href="https://taicol.tw/" target="_blank">TaiCOL</a> | 
             <a href="https://www.fishbase.se/" target="_blank">FishBase</a> | 
@@ -129,7 +80,6 @@
             <br>系統製作：<a href="https://eatfishnlife.com/" target="_blank">水底萬事屋</a>
         </div>
     </div>
-
     <script>
         (function() {
             const script = document.createElement('script');
@@ -138,6 +88,5 @@
             document.body.appendChild(script);
         })();
     </script>
-
 </body>
 </html>

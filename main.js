@@ -2,7 +2,7 @@ const searchBtn = document.querySelector('#searchBtn');
 const fishInput = document.querySelector('#fishName');
 const resultDiv = document.querySelector('#result');
 
-// 💡 1. 維基百科 API 萃取引擎
+// 💡 1. 維基百科 API 萃取引擎 (保持不變)
 window.fetchWikiData = async function(sciName, btnElement) {
     const targetDiv = btnElement.parentElement.nextElementSibling;
     const originalBtnText = btnElement.innerHTML;
@@ -47,7 +47,7 @@ window.fetchWikiData = async function(sciName, btnElement) {
     }
 };
 
-// 💡 保育等級燈號轉換器
+// 💡 保育等級燈號轉換器 (保持不變)
 function getConservationStyle(code) {
     if (!code || code === 'null') return { label: '無紀錄', bg: '#f5f5f5', color: '#aaa', border: '#eee' };
     const upperCode = code.toUpperCase();
@@ -75,7 +75,7 @@ searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
 
-    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在深度檢索並過濾非魚類資料...</p>`;
+    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在擴大檢索範圍並過濾資料...</p>`;
 
     try {
         const matchUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(keyword)}&best=no&bio_group=魚類`;
@@ -89,10 +89,17 @@ searchBtn.addEventListener('click', async () => {
         ]);
 
         const resultMap = new Map();
-        const confirmedFishIds = new Set(); // 記錄已經確認是魚類的 ID
+        const confirmedFishIds = new Set(); 
 
         const addTaxonData = (dataList) => {
-            if (dataList) dataList.forEach(item => { if (item.kingdom === 'Animalia') resultMap.set(item.taxon_id, item); });
+            if (dataList) {
+                dataList.forEach(item => { 
+                    // 💡 改變：容許 kingdom 為空值 (應付 API 缺漏)，只要不是明確寫著別的界就好
+                    if (!item.kingdom || item.kingdom === 'Animalia') {
+                        resultMap.set(item.taxon_id, item); 
+                    }
+                });
+            }
         };
         addTaxonData(commonRes.data);
         addTaxonData(groupRes.data);
@@ -105,7 +112,8 @@ searchBtn.addEventListener('click', async () => {
             });
         }
 
-        const detailPromises = matchIdsToFetch.slice(0, 15).map(async (tid) => {
+        // 💡 改變：將反查上限從 15 提高到 30，避免熱門關鍵字結果被腰斬
+        const detailPromises = matchIdsToFetch.slice(0, 30).map(async (tid) => {
             const detailUrl = `https://api.taicol.tw/v2/taxon?taxon_id=${tid}`;
             try {
                 const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(detailUrl)}`);
@@ -116,26 +124,28 @@ searchBtn.addEventListener('click', async () => {
 
         const fetchedDetails = await Promise.all(detailPromises);
         fetchedDetails.forEach(detail => {
-            if (detail && detail.kingdom === 'Animalia') resultMap.set(detail.taxon_id, detail);
+            if (detail && (!detail.kingdom || detail.kingdom === 'Animalia')) {
+                resultMap.set(detail.taxon_id, detail);
+            }
         });
 
-        // 💡 核心過濾器：暴力字串掃描 + 棲地絕對過濾
+        // 💡 核心過濾器：處理 API 空值防呆
         let fishList = Array.from(resultMap.values()).filter(fish => {
-            // 1. 基本身分確認
-            const validRanks = ['Species', 'Subspecies', 'Variety'];
-            if (!validRanks.includes(fish.rank)) return false;
-            if (fish.kingdom !== 'Animalia') return false;
+            // 1. 基本身分確認 (增加 Form 型態，並容許 API rank 空值由後續把關)
+            const validRanks = ['Species', 'Subspecies', 'Variety', 'Form'];
+            if (fish.rank && !validRanks.includes(fish.rank)) return false;
+            if (fish.kingdom && fish.kingdom !== 'Animalia') return false;
 
-            // 2. 棲地絕對防線：如果是純陸生（沒有淡/海水屬性），絕對是鳥、獸、蟲，直接踢掉！
+            // 2. 棲地絕對防線
             const isStrictlyTerrestrial = fish.is_terrestrial && !fish.is_freshwater && !fish.is_marine && !fish.is_brackish;
             if (isStrictlyTerrestrial) return false;
 
-            // 3. 暴力字串掃描黑名單：把整包 JSON 轉成大寫字串，只要掃到昆蟲/節肢等字眼就殺
+            // 3. 暴力字串掃描黑名單
             const fishStr = JSON.stringify(fish).toUpperCase();
             const bugKeywords = ['昆蟲', 'INSECTA', '節肢動物', 'ARTHROPODA', '軟體動物', 'MOLLUSCA', '鳥綱', 'AVES', '哺乳', 'MAMMALIA', '爬蟲', 'REPTILIA', '兩棲', 'AMPHIBIA'];
             if (bugKeywords.some(kw => fishStr.includes(kw))) return false;
 
-            // 4. 俗名防呆排除 (名字有魚但不是魚的生物)
+            // 4. 俗名防呆排除
             const fakeFishes = ['鯨', '鱷', '墨魚', '魷魚', '鮑魚', '章魚', '甲魚', '海豚', '儒艮'];
             const nameStr = (fish.family_c || '') + (fish.common_name_c || '');
             if (fakeFishes.some(w => nameStr.includes(w))) return false;

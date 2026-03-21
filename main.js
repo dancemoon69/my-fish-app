@@ -91,22 +91,23 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 🚀 核心過濾器：階層過濾 + 生物界域排除
+        // 🚀 核心過濾器：階層過濾 + 生物界域深度封印
         let list = Array.from(resultMap.values()).filter(f => {
             // A. 階層檢查 (僅留 種、亞種、變種、型)
             const rank = (f.rank || '').toLowerCase();
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
             if (!validRanks.includes(rank)) return false;
 
-            // B. 界域封印 (排除真菌、細菌、古菌、病毒)
-            const kingdom = (f.kingdom || '').toLowerCase();
-            const sciName = (f.scientific_name || '').toLowerCase();
-            const excludedKingdoms = ['fungi', 'archaea', 'bacteria', 'viruses', 'virus'];
+            // B. 異界封印：轉為字串進行全面掃描，徹底排除真菌、細菌、古菌與所有指定的病毒域
+            const dataStr = JSON.stringify(f).toLowerCase();
+            const forbiddenTerms = [
+                'fungi', 'archaea', 'bacteria', 'virus', 'viruses', 
+                'duplodnaviria', 'monodnaviria', 'riboviria', 
+                'ribozyviria', 'varidnaviria', 'incertae sedis'
+            ];
             
-            if (excludedKingdoms.includes(kingdom)) return false;
-            
-            // 額外檢查學名是否包含病毒字眼 (針對某些分類不全的情況)
-            if (sciName.includes('virus')) return false;
+            // 若命中任何一項禁語，則封印該卷宗
+            if (forbiddenTerms.some(term => dataStr.includes(term))) return false;
 
             return true;
         });
@@ -190,7 +191,7 @@ searchBtn.addEventListener('click', async () => {
         });
 
     } catch (error) {
-        resultDiv.innerHTML = '<p style="text-align:center; color:red;">⚠️ 連線失敗，請檢查網路狀態。</p>';
+        resultDiv.innerHTML = '<p style="text-align:center; color:red; margin-top:50px;">⚠️ 連線失敗，請檢查網路狀態。</p>';
     } finally {
         searchBtn.disabled = false;
     }

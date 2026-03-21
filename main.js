@@ -28,7 +28,6 @@ window.fetchWikiData = async function(sciName, btnElement) {
 
 // 💡 2. 保育分級轉換器
 function getStatusHtml(code) {
-    // 💡 確保無紀錄時也有固定的顯示方式
     if (!code || code === 'null') return '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
     const upper = code.toUpperCase();
     const map = { 'EX': '絕滅', 'EW': '野外絕滅', 'RE': '區域滅絕', 'CR': '極危', 'EN': '瀕危', 'VU': '易危', 'NT': '近危', 'LC': '無危', 'NCR': '極危', 'NEN': '瀕危', 'NVU': '易危', 'NNT': '近危', 'NLC': '無危', 'DD': '數據缺乏' };
@@ -39,7 +38,6 @@ function getStatusHtml(code) {
     else if (upper.includes('NT')) color = '#8bc34a'; 
     else if (upper.includes('EX') || upper.includes('EW') || upper.includes('RE')) color = '#000';
     
-    // 加上 white-space: nowrap 確保內容不換行
     return `<span style="background:${color}; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">${label} (${upper})</span>`;
 }
 
@@ -49,7 +47,7 @@ searchBtn.addEventListener('click', async () => {
     if (!keyword) return;
 
     searchBtn.disabled = true;
-    resultDiv.innerHTML = '<p style="text-align:center; margin-top:50px; font-weight:bold; color:#0077be;">🌊 正在極速檢索物種名錄...</p>';
+    resultDiv.innerHTML = '<p style="text-align:center; margin-top:50px; font-weight:bold; color:#0077be;">🌊 正在極速檢索圖鑑資料...</p>';
 
     try {
         const matchUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/nameMatch?name=${keyword}&best=no&bio_group=魚類`)}`;
@@ -63,7 +61,8 @@ searchBtn.addEventListener('click', async () => {
         ]);
 
         const resultMap = new Map();
-        const combine = (list) => { if (list) list.forEach(item => { if (!item.kingdom || item.kingdom === 'Animalia') resultMap.set(item.taxon_id, item); }); };
+        // 💡 移除 Kingdom 過濾，全面放行
+        const combine = (list) => { if (list) list.forEach(item => { resultMap.set(item.taxon_id, item); }); };
         combine(cR.data); combine(gR.data);
 
         const ids = new Set();
@@ -76,12 +75,11 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
+        // 💡 核心過濾：只保留「種」與「亞種」，移除所有其餘排除條件
         let list = Array.from(resultMap.values()).filter(f => {
             const rank = (f.rank || '').toLowerCase();
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
-            if (!validRanks.includes(rank)) return false;
-            const str = JSON.stringify(f).toUpperCase();
-            return !str.includes('INSECTA') && !str.includes('昆蟲');
+            return validRanks.includes(rank);
         });
 
         if (list.length === 0) {
@@ -94,7 +92,6 @@ searchBtn.addEventListener('click', async () => {
         
         resultDiv.innerHTML = list.map(fish => {
             const sciName = fish.scientific_name || fish.simple_name;
-            // 💡 修正無紀錄時的文字
             const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
             const rankLabel = (fish.rank || '').toLowerCase() === 'species' ? '種' : '亞種';
 

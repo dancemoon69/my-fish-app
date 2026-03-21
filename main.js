@@ -28,7 +28,8 @@ window.fetchWikiData = async function(sciName, btnElement) {
 
 // 💡 2. 保育分級轉換器
 function getStatusHtml(code) {
-    if (!code || code === 'null') return '<span style="color:#ccc; font-weight:bold;">無紀錄</span>';
+    // 💡 確保無紀錄時也有固定的顯示方式
+    if (!code || code === 'null') return '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
     const upper = code.toUpperCase();
     const map = { 'EX': '絕滅', 'EW': '野外絕滅', 'RE': '區域滅絕', 'CR': '極危', 'EN': '瀕危', 'VU': '易危', 'NT': '近危', 'LC': '無危', 'NCR': '極危', 'NEN': '瀕危', 'NVU': '易危', 'NNT': '近危', 'NLC': '無危', 'DD': '數據缺乏' };
     const label = map[upper] || upper;
@@ -37,7 +38,9 @@ function getStatusHtml(code) {
     else if (upper.includes('VU')) color = '#ff9800'; 
     else if (upper.includes('NT')) color = '#8bc34a'; 
     else if (upper.includes('EX') || upper.includes('EW') || upper.includes('RE')) color = '#000';
-    return `<span style="background:${color}; color:white; padding:3px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${label} (${upper})</span>`;
+    
+    // 加上 white-space: nowrap 確保內容不換行
+    return `<span style="background:${color}; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">${label} (${upper})</span>`;
 }
 
 // 💡 3. 主搜尋邏輯
@@ -50,7 +53,7 @@ searchBtn.addEventListener('click', async () => {
 
     try {
         const matchUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/nameMatch?name=${keyword}&best=no&bio_group=魚類`)}`;
-        const commonUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?common_name=${keyword}`)}`;
+        const commonUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/common_name=${keyword}`)}`;
         const groupUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?taxon_group=${keyword}`)}`;
 
         const [mR, cR, gR] = await Promise.all([
@@ -73,7 +76,6 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 過濾：只留 種 與 亞種，排除昆蟲
         let list = Array.from(resultMap.values()).filter(f => {
             const rank = (f.rank || '').toLowerCase();
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
@@ -90,17 +92,16 @@ searchBtn.addEventListener('click', async () => {
 
         const alienMap = { 'native': '原生', 'naturalized': '歸化', 'invasive': '入侵', 'cultured': '養殖' };
         
-        // 💡 渲染內容
         resultDiv.innerHTML = list.map(fish => {
             const sciName = fish.scientific_name || fish.simple_name;
-            const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:3px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">附錄 ${fish.cites}</span>` : '<span style="color:#ccc; font-weight:bold;">無紀錄</span>';
-            // 💡 修正：正名為「種」與「亞種」
+            // 💡 修正無紀錄時的文字
+            const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
             const rankLabel = (fish.rank || '').toLowerCase() === 'species' ? '種' : '亞種';
 
             return `
                 <div class="fish-card">
                     <div class="fish-img-container" id="img-${fish.taxon_id}">
-                        <div style="color:#ddd; font-size:0.8em;">圖片載入中...</div>
+                        <div style="color:#eee; font-size:0.8em;">圖片載入中...</div>
                     </div>
                     <div class="fish-info">
                         <h3 class="fish-title">🐟 ${fish.common_name_c || '未命名'}</h3>
@@ -141,7 +142,6 @@ searchBtn.addEventListener('click', async () => {
             `;
         }).join('');
 
-        // 異步載入圖片
         list.forEach(async (fish) => {
             const sciName = fish.scientific_name || fish.simple_name;
             const imgDiv = document.getElementById(`img-${fish.taxon_id}`);

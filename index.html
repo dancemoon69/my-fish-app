@@ -12,44 +12,98 @@
             --primary-blue: #0077be;
             --dark-blue: #00568c;
             --accent-green: #004d40;
-            --sealife-teal: #00838f; /* SeaLifeBase 專用色 */
+            --sealife-teal: #00838f;
             --danger-red: #d32f2f;
             --bg-light: #f4f7f9;
             --text-main: #333;
             --text-muted: #666;
         }
-        body { font-family: 'Segoe UI', 'Noto Sans TC', sans-serif; background-color: var(--bg-light); margin: 0; padding: 20px; color: var(--text-main); }
+        body { 
+            font-family: 'Segoe UI', 'Noto Sans TC', sans-serif; 
+            background-color: var(--bg-light); 
+            margin: 0; 
+            padding: 20px; 
+            color: var(--text-main); 
+        }
         .container { max-width: 900px; margin: 0 auto; }
         .header { text-align: center; margin-bottom: 30px; }
         .header h1 { color: var(--primary-blue); font-size: 2.2em; margin-bottom: 10px; }
         .header .warning { 
-            color: var(--danger-red); font-weight: bold; font-size: 0.85em; 
-            background: #fff3f3; padding: 8px 20px; border-radius: 20px; 
-            display: inline-block; margin-top: 10px; border: 1px solid #ffcdd2;
+            color: var(--danger-red); 
+            font-weight: bold; 
+            font-size: 0.85em; 
+            background: #fff3f3; 
+            padding: 8px 20px; 
+            border-radius: 20px; 
+            display: inline-block; 
+            margin-top: 10px; 
+            border: 1px solid #ffcdd2;
         }
         .search-box { display: flex; gap: 12px; margin-bottom: 30px; }
-        #fishName { flex: 1; padding: 15px; font-size: 1.1em; border: 2px solid #ddd; border-radius: 12px; outline: none; transition: 0.3s; }
-        #fishName:focus { border-color: var(--primary-blue); box-shadow: 0 0 8px rgba(0,119,190,0.2); }
-        #searchBtn { padding: 15px 30px; background: var(--primary-blue); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        #fishName { 
+            flex: 1; 
+            padding: 15px; 
+            font-size: 1.1em; 
+            border: 2px solid #ddd; 
+            border-radius: 12px; 
+            outline: none; 
+            transition: 0.3s; 
+        }
+        #fishName:focus { 
+            border-color: var(--primary-blue); 
+            box-shadow: 0 0 8px rgba(0,119,190,0.2); 
+        }
+        #searchBtn { 
+            padding: 15px 30px; 
+            background: var(--primary-blue); 
+            color: white; 
+            border: none; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            transition: 0.2s; 
+        }
         #searchBtn:hover { background: var(--dark-blue); }
 
         .fish-card {
-            background: #fff; border-radius: 16px; padding: 25px; margin-bottom: 24px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06); display: flex; gap: 25px;
-            align-items: flex-start; transition: 0.2s; border: 1px solid #eef2f6;
+            background: #fff; 
+            border-radius: 16px; 
+            padding: 25px; 
+            margin-bottom: 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06); 
+            display: flex; 
+            gap: 25px;
+            align-items: flex-start; 
+            transition: 0.2s; 
+            border: 1px solid #eef2f6;
         }
         .fish-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0, 119, 190, 0.12); }
         
         .fish-img-container {
-            flex: 0 0 240px; height: 160px; background: #fdfdfd; border-radius: 12px;
-            overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #f0f0f0;
+            flex: 0 0 240px; 
+            height: 160px; 
+            background: #fdfdfd; 
+            border-radius: 12px;
+            overflow: hidden; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border: 1px solid #f0f0f0;
         }
         .fish-img-container img { width: 100%; height: 100%; object-fit: contain; }
         
         .fish-info { flex: 1; }
         .fish-title { margin: 0; color: var(--primary-blue); font-size: 1.6em; font-weight: bold; }
         .fish-sci-name { font-size: 1.1em; color: var(--danger-red); font-style: italic; margin-bottom: 12px; opacity: 0.9; }
-        .aliases-box { font-size: 0.9em; color: #666; background: #f8f9fa; padding: 8px 12px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ddd; }
+        .aliases-box { 
+            font-size: 0.9em; 
+            color: #666; 
+            background: #f8f9fa; 
+            padding: 8px 12px; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            border-left: 4px solid #ddd; 
+        }
         
         .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.9em; margin-bottom: 15px; }
         .data-item strong { color: #888; font-size: 0.85em; display: block; margin-bottom: 2px; }
@@ -78,12 +132,20 @@
             letter-spacing: 0.5px;
         }
 
-        /* 🚀 更新按鈕區：因按鈕增加，改為 wrap 佈局 */
         .action-buttons { display: flex; gap: 8px; padding-top: 15px; flex-wrap: wrap; }
         .btn { 
-            flex: 1; min-width: 100px; padding: 10px; border-radius: 8px; 
-            font-weight: bold; cursor: pointer; border: none; color: white; 
-            text-decoration: none; text-align: center; font-size: 0.85em; transition: 0.2s; 
+            flex: 1; 
+            min-width: 100px; 
+            padding: 10px; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border: none; 
+            color: white; 
+            text-decoration: none; 
+            text-align: center; 
+            font-size: 0.85em; 
+            transition: 0.2s; 
         }
         .btn-wiki { background: var(--primary-blue); }
         .btn-taicol { background: #ef6c00; }
@@ -91,9 +153,26 @@
         .btn-sealife { background: var(--sealife-teal); }
         .btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
-        .wiki-content { display: none; margin-top: 15px; padding: 18px; background: #f0f7ff; border-radius: 12px; border-left: 5px solid var(--primary-blue); font-size: 0.95em; line-height: 1.7; }
+        .wiki-content { 
+            display: none; 
+            margin-top: 15px; 
+            padding: 18px; 
+            background: #f0f7ff; 
+            border-radius: 12px; 
+            border-left: 5px solid var(--primary-blue); 
+            font-size: 0.95em; 
+            line-height: 1.7; 
+        }
         
-        .data-credits { text-align: center; font-size: 0.85em; color: #999; margin-top: 50px; padding: 30px; border-top: 1px solid #eee; line-height: 2; }
+        .data-credits { 
+            text-align: center; 
+            font-size: 0.85em; 
+            color: #999; 
+            margin-top: 50px; 
+            padding: 30px; 
+            border-top: 1px solid #eee; 
+            line-height: 2; 
+        }
         .data-credits a { color: var(--primary-blue); text-decoration: none; font-weight: bold; }
         
         @media (max-width: 600px) {

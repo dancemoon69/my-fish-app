@@ -120,7 +120,6 @@ searchBtn.addEventListener('click', async () => {
             // 🚀 生成外部連結
             const slug = sciName.replace(/\s+/g, '-');
             const fishDbUrl = `https://fishdb.sinica.edu.tw/chi/species.php?science=${sciName.replace(/\s+/g, '+')}`;
-            const taiEolUrl = `https://taieol.tw/search?query=${sciName.replace(/\s+/g, '+')}`; // 🚀 新增 TaiEOL
 
             return `
                 <div class="fish-card">
@@ -158,7 +157,6 @@ searchBtn.addEventListener('click', async () => {
                         <div class="action-buttons">
                             <button class="btn btn-wiki" onclick="fetchWikiData('${sciName}', this)">📸 百科描述</button>
                             <a class="btn btn-taicol" href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank">🏷️ TaiCOL</a>
-                            <a class="btn btn-taieol" href="${taiEolUrl}" target="_blank">📚 TaiEOL</a>
                             <a class="btn btn-fishdb" href="${fishDbUrl}" target="_blank">🏛️ FishDB</a>
                             <a class="btn btn-fishbase" href="https://www.fishbase.se/summary/${slug}" target="_blank">➔ FishBase</a>
                             <a class="btn btn-sealife" href="https://sealifebase.ca/summary/${slug}" target="_blank">➔ SeaLifeBase</a>

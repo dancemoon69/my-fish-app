@@ -57,13 +57,13 @@ function getStatusHtml(code) {
     return `<span style="background:${color}; color:white; padding:3px 10px; border-radius:15px; font-size:0.85em; font-weight:bold;">${label} (${upper})</span>`;
 }
 
-// 💡 3. 主搜尋程式
+// 💡 3. 主搜尋程式 (已更新 Rank 過濾邏輯)
 searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
 
     searchBtn.disabled = true;
-    resultDiv.innerHTML = '<p style="text-align:center;">🌊 正在檢索名錄資料與生態圖片...</p>';
+    resultDiv.innerHTML = '<p style="text-align:center;">🌊 正在檢索具體物種與生態圖片...</p>';
 
     try {
         const matchUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/nameMatch?name=${keyword}&best=no&bio_group=魚類`)}`;
@@ -87,21 +87,27 @@ searchBtn.addEventListener('click', async () => {
         const ids = new Set();
         if (mR.data) mR.data.forEach(item => { if (!resultMap.has(item.taxon_id)) ids.add(item.taxon_id); });
 
-        const details = await Promise.all(Array.from(ids).slice(0, 20).map(async (tid) => {
+        const details = await Promise.all(Array.from(ids).slice(0, 25).map(async (tid) => {
             const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?taxon_id=${tid}`)}`);
             const j = await r.json();
             return j.data ? j.data[0] : null;
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 排除昆蟲
+        // 💡 核心過濾：只保留 Species 與 Subspecies，排除 Genus 等屬名
         let list = Array.from(resultMap.values()).filter(f => {
+            // 檢查階層
+            const rank = f.rank ? f.rank.toLowerCase() : '';
+            const validRanks = ['species', 'subspecies', 'variety', 'form'];
+            if (!validRanks.includes(rank)) return false;
+
+            // 排除昆蟲
             const str = JSON.stringify(f).toUpperCase();
             return !str.includes('INSECTA') && !str.includes('昆蟲');
         });
 
         if (list.length === 0) {
-            resultDiv.innerHTML = '<p style="text-align:center; color:red;">❌ 找不到對應的資料。</p>';
+            resultDiv.innerHTML = '<p style="text-align:center; color:red;">❌ 找不到具體的物種或亞種資料。</p>';
             searchBtn.disabled = false;
             return;
         }
@@ -110,7 +116,7 @@ searchBtn.addEventListener('click', async () => {
         const cardsHtml = await Promise.all(list.map(async (fish) => {
             const sciName = fish.scientific_name || fish.simple_name;
             
-            // 🖼️ 抓取縮圖
+            // 🖼️ 抓取不裁剪縮圖
             let imageUrl = '';
             try {
                 const wikiRes = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${sciName.replace(/\s+/g, '_')}`);
@@ -132,7 +138,7 @@ searchBtn.addEventListener('click', async () => {
                         <div class="fish-sci-name">${sciName}</div>
                         <div class="fish-aliases">別名：${fish.alternative_name_c || '無'}</div>
                         <div class="data-grid">
-                            <div><strong>地位：</strong> ${fish.taxon_status === 'accepted' ? '有效名' : '非有效名'}</div>
+                            <div><strong>階層：</strong> ${fish.rank === 'species' ? '物種' : '亞種'}</div>
                             <div><strong>性質：</strong> ${alienMap[fish.alien_type] || '未標示'}</div>
                             <div><strong>分布：</strong> ${fish.is_in_taiwan ? '✔ 臺灣' : '✖ 國外'}</div>
                             <div><strong>特有：</strong> ${fish.is_endemic ? '✔ 是' : '✖ 否'}</div>
@@ -145,7 +151,7 @@ searchBtn.addEventListener('click', async () => {
                             </div>
                         </div>
                         <div class="action-buttons">
-                            <button class="btn btn-wiki" onclick="fetchWikiData('${sciName}', this)">📸 百科圖文</button>
+                            <button class="btn btn-wiki" onclick="fetchWikiData('${sciName}', this)">📸 百科描述</button>
                             <a class="btn btn-taicol" href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank">🏷️ TaiCOL</a>
                             <a class="btn btn-fishbase" href="https://www.fishbase.se/summary/${sciName.replace(/\s+/g, '-')}" target="_blank">➔ FishBase</a>
                         </div>

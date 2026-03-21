@@ -50,44 +50,31 @@ window.fetchWikiData = async function(sciName, btnElement) {
     }
 };
 
-// 💡 2. 專業版：IUCN & 臺灣紅皮書 燈號轉換器 (去除「國家」二字)
+// 💡 2. 專業版：IUCN & 臺灣紅皮書 燈號轉換器
 function getConservationStyle(code) {
     if (!code || code === 'null') return { html: `<span style="display:inline-block; background:#f5f5f5; color:#aaa; border:1px solid #eee; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">無紀錄</span>` };
-    
     const upperCode = code.toUpperCase();
-    
     const styleMap = {
-        // --- 滅絕等級 ---
         'EX': { label: '絕滅', bg: '#000000', color: '#fff', border: '#000' },
         'EW': { label: '野外絕滅', bg: '#4a148c', color: '#fff', border: '#4a148c' },
-        'RE': { label: '區域滅絕', bg: '#311b92', color: '#fff', border: '#311b92' }, // 臺灣紅皮書特有
-        
-        // --- 全球受威脅等級 (IUCN) ---
+        'RE': { label: '區域滅絕', bg: '#311b92', color: '#fff', border: '#311b92' },
         'CR': { label: '極危', bg: '#d32f2f', color: '#fff', border: '#b71c1c' },
         'EN': { label: '瀕危', bg: '#f44336', color: '#fff', border: '#d32f2f' },
         'VU': { label: '易危', bg: '#ff9800', color: '#fff', border: '#f57c00' },
         'NT': { label: '近危', bg: '#8bc34a', color: '#000', border: '#689f38' },
         'LC': { label: '無危', bg: '#4caf50', color: '#fff', border: '#388e3c' },
         'CD': { label: '依賴保育', bg: '#c0ca33', color: '#000', border: '#afb42b' },
-        
-        // --- 國家受威脅等級 (臺灣紅皮書專用，字首為 N，但顯示文字不加「國家」) ---
         'NCR': { label: '極危', bg: '#d32f2f', color: '#fff', border: '#b71c1c' },
         'NEN': { label: '瀕危', bg: '#f44336', color: '#fff', border: '#d32f2f' },
         'NVU': { label: '易危', bg: '#ff9800', color: '#fff', border: '#f57c00' },
         'NNT': { label: '近危', bg: '#8bc34a', color: '#000', border: '#689f38' },
         'NLC': { label: '無危', bg: '#4caf50', color: '#fff', border: '#388e3c' },
-        
-        // --- 其他狀態 ---
         'DD': { label: '數據缺乏', bg: '#9e9e9e', color: '#fff', border: '#757575' },
         'NE': { label: '未評估', bg: '#e0e0e0', color: '#000', border: '#bdbdbd' },
         'NA': { label: '不適用', bg: '#e0e0e0', color: '#000', border: '#bdbdbd' }
     };
-
     const config = styleMap[upperCode] || { label: '未知分級', bg: '#ffffff', color: '#000', border: '#ccc' };
-    
-    return { 
-        html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow:0 1px 3px rgba(0,0,0,0.1);">${config.label} (${upperCode})</span>` 
-    };
+    return { html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow:0 1px 3px rgba(0,0,0,0.1);">${config.label} (${upperCode})</span>` };
 }
 
 // 💡 3. 極速版搜尋邏輯
@@ -110,7 +97,6 @@ searchBtn.addEventListener('click', async () => {
         ]);
 
         const resultMap = new Map();
-        
         const addTaxonData = (dataList) => {
             if (dataList) {
                 dataList.forEach(item => { 
@@ -150,38 +136,21 @@ searchBtn.addEventListener('click', async () => {
         });
 
         if (fishList.length === 0) {
-            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的紀錄。<br><small style="color:#888;">提示：請確認輸入的名稱是否正確。</small></div>`;
+            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的紀錄。</div>`;
             searchBtn.disabled = false;
             return;
         }
 
-        // 💡 4. 渲染卡片結果 (🖼️ [新增功能] 圖片抓取邏輯)
+        // 💡 4. 渲染卡片結果 (🖼️ 圖片抓取邏輯已整合在此)
         let htmlContent = `<p style="margin-bottom:20px; color:var(--text-muted); font-weight:bold;">共找到 ${fishList.length} 筆資料：</p>`;
         
-        // 圖片抓取函數 (Wikipedia Page Images API)
-        const fetchImage = async (sciName) => {
-            try {
-                const wikiTitle = sciName.replace(/\s+/g, '_');
-                const imgRes = await fetch(`https://zh.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=thumbnail&pithumbsize=400&titles=${encodeURIComponent(wikiTitle)}&origin=*`).then(r => r.json());
-                if (imgRes.query && imgRes.query.pages) {
-                    const pages = imgRes.query.pages;
-                    const firstPageKey = Object.keys(pages)[0];
-                    if (pages[firstPageKey].thumbnail) {
-                        return `<img src="${pages[firstPageKey].thumbnail.source}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">`;
-                    }
-                }
-            } catch (e) { console.warn("圖片抓取失敗"); }
-            return ''; // 沒圖片則回傳空字串
-        };
-
-        // 🖼️ 為了不卡住搜尋速度，圖片採用「載入後顯示」的方式
-        const fishCardsHtml = await Promise.all(fishList.map(async fish => {
+        // 渲染每一張卡片
+        const cards = await Promise.all(fishList.map(async (fish) => {
             const sciName = fish.simple_name || fish.scientific_name || "Unknown";
             const alienMap = { 'native': '原生種', 'naturalized': '歸化種', 'invasive': '入侵種', 'cultured': '栽培豢養/養殖' };
-            const alienStatus = fish.alien_type ? (alienMap[fish.alien_type] || fish.alien_type) : '未標示';
+            const alienStatus = fish.alien_type ? (alienMap[fish.alien_type] || alienMap.native) : '未標示';
 
             const habitats = [];
-            if (fish.is_terrestrial) habitats.push('陸生');
             if (fish.is_freshwater) habitats.push('淡水');
             if (fish.is_brackish) habitats.push('半鹹水');
             if (fish.is_marine) habitats.push('海洋');
@@ -189,19 +158,30 @@ searchBtn.addEventListener('click', async () => {
 
             const citesTag = fish.cites ? `<span style="display:inline-block; background:#1976d2; color:white; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-size:0.85em;">無紀錄</span>';
             const iucnTag = getConservationStyle(fish.iucn).html;
-            
-            // 獨立渲染臺灣紅皮書狀態
             const redlistTag = getConservationStyle(fish.redlist).html;
             
             const inTaiwan = fish.is_in_taiwan ? '<span style="color:#2e7d32; font-weight:bold;">✔</span>' : '<span style="color:var(--danger-red); font-weight:bold;">✖</span>';
             const isEndemic = fish.is_endemic ? '<span style="color:#2e7d32; font-weight:bold;">✔</span>' : '<span style="color:#999;">✖</span>';
 
-            // 🖼️ 抓取圖片 HTML
-            const imgHtml = await fetchImage(sciName);
+            // 🖼️ 核心抓圖邏輯：使用學名向 Wikipedia REST API 索取縮圖
+            let imageUrl = '';
+            try {
+                const wikiRes = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${sciName.replace(/\s+/g, '_')}`);
+                const wikiData = await wikiRes.json();
+                if (wikiData.thumbnail) imageUrl = wikiData.thumbnail.source;
+            } catch (e) { /* 靜默失敗 */ }
+
+            // 如果有圖片網址，產生 HTML，否則為空
+            const imgHtml = imageUrl 
+                ? `<div style="width:100%; height:220px; overflow:hidden; border-radius:12px; margin-bottom:15px; background:#eee;">
+                     <img src="${imageUrl}" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.style.display='none'">
+                   </div>` 
+                : '';
 
             return `
                 <div class="fish-card">
-                    ${imgHtml} <h3 class="fish-title">🐟 ${fish.common_name_c || '未知中文名'}</h3>
+                    ${imgHtml}
+                    <h3 class="fish-title">🐟 ${fish.common_name_c || '未知中文名'}</h3>
                     <div class="fish-sci-name">${sciName}</div>
                     <div class="fish-aliases"><strong>別名：</strong> ${fish.alternative_name_c || '無'}</div>
                     <div class="data-grid">
@@ -228,11 +208,11 @@ searchBtn.addEventListener('click', async () => {
             `;
         }));
 
-        resultDiv.innerHTML = htmlContent + fishCardsHtml.join('');
+        resultDiv.innerHTML = htmlContent + cards.join('');
 
     } catch (error) {
         console.error("❌ 搜尋錯誤:", error);
-        resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px; background:#fff3f3; border-radius:12px;">⚠️ API 連線逾時，請檢查網路或稍後再試。</div>`;
+        resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px;">⚠️ API 連線逾時，請檢查網路。</div>`;
     } finally {
         searchBtn.disabled = false;
     }

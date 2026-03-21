@@ -2,6 +2,14 @@ const searchBtn = document.querySelector('#searchBtn');
 const fishInput = document.querySelector('#fishName');
 const resultDiv = document.querySelector('#result');
 
+// 💡 0. 支援 Enter 鍵直接搜尋
+fishInput.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        e.preventDefault(); // 避免觸發預設表單提交
+        searchBtn.click();
+    }
+});
+
 // 💡 1. 百科圖鑑引擎
 window.fetchWikiData = async function(sciName, btnElement) {
     const targetDiv = btnElement.parentElement.nextElementSibling;
@@ -64,13 +72,13 @@ function getConservationStyle(code) {
     return { html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">${config.label} (${upperCode})</span>` };
 }
 
-// 💡 3. 穩定版核心搜尋邏輯
+// 💡 3. 極速版搜尋邏輯 (移除所有沉重過濾器)
 searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
 
     searchBtn.disabled = true;
-    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在連接名錄資料庫進行檢索...</p>`;
+    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在極速檢索圖鑑資料...</p>`;
 
     try {
         const matchUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/nameMatch?name=${keyword}&best=no&bio_group=魚類`)}`;
@@ -85,6 +93,7 @@ searchBtn.addEventListener('click', async () => {
 
         const resultMap = new Map();
         
+        // 快速整理資料
         const addTaxonData = (dataList) => {
             if (dataList) {
                 dataList.forEach(item => { 
@@ -95,6 +104,7 @@ searchBtn.addEventListener('click', async () => {
         addTaxonData(commonRes.data);
         addTaxonData(groupRes.data);
 
+        // 去重
         const matchIdsToFetch = new Set();
         if (matchRes.data) {
             matchRes.data.forEach(item => { 
@@ -102,6 +112,7 @@ searchBtn.addEventListener('click', async () => {
             });
         }
 
+        // 批量抓取詳細資料 (上限 30 筆)
         const detailPromises = Array.from(matchIdsToFetch).slice(0, 30).map(async (tid) => {
             try {
                 const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?taxon_id=${tid}`)}`);
@@ -117,25 +128,15 @@ searchBtn.addEventListener('click', async () => {
             }
         });
 
-        // 💡 終極過濾器：只排除昆蟲綱 (Insecta)，其餘全留
+        // 💡 極簡過濾器：只要是「種」或「亞種」就放行，不管牠是蟲是鳥！
         let fishList = Array.from(resultMap.values()).filter(fish => {
-            // 1. 保留物種與亞種
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
             const currentRank = fish.rank ? fish.rank.toLowerCase() : '';
-            if (currentRank && !validRanks.includes(currentRank)) return false;
-
-            // 2. 絕對防蟲防線：無視 API 欄位缺漏，直接掃描整包資料字串
-            const fishDataStr = JSON.stringify(fish).toUpperCase();
-            if (fishDataStr.includes('INSECTA') || fishDataStr.includes('昆蟲')) {
-                return false; // 只要資料裡混有昆蟲兩字，立刻踢除！
-            }
-
-            // 只要不是昆蟲，通通放行！
-            return true;
+            return currentRank ? validRanks.includes(currentRank) : true;
         });
 
         if (fishList.length === 0) {
-            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的魚類紀錄。<br><small style="color:#888;">提示：請確認輸入的名稱是否正確，或嘗試輸入完整俗名。</small></div>`;
+            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的紀錄。<br><small style="color:#888;">提示：請確認輸入的名稱是否正確。</small></div>`;
             searchBtn.disabled = false;
             return;
         }
@@ -196,6 +197,6 @@ searchBtn.addEventListener('click', async () => {
         console.error("❌ 搜尋錯誤:", error);
         resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px; background:#fff3f3; border-radius:12px;">⚠️ API 連線逾時，請檢查網路或稍後再試。</div>`;
     } finally {
-        searchBtn.disabled = false;
+        searchBtn.disabled = false; // 恢復按鈕狀態
     }
 });

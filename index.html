@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>認識臺灣水生動植物圖鑑</title>
+    <title>蒼海契約：臺灣水域動植幻獸秘典</title>
     <style>
         :root {
             --primary-blue: #0077be;
@@ -27,10 +27,11 @@
         }
         .container { max-width: 900px; margin: 0 auto; }
         
-        /* 🚀 首頁文字潤飾區 */
+        /* 🚀 標題與中二潤飾區 */
         .header { text-align: center; margin-bottom: 30px; }
         .header h1 { color: var(--primary-blue); font-size: 2.2em; margin-bottom: 10px; }
         .header .intro-text { font-size: 1em; color: var(--text-muted); font-style: italic; margin-bottom: 15px; }
+        
         .header .warning { 
             color: #555; 
             font-size: 0.9em; 
@@ -46,6 +47,17 @@
             max-width: 700px;
         }
         .warning b { color: var(--primary-blue); }
+
+        /* 🚀 搜尋指引區 */
+        .search-guide {
+            text-align: left;
+            font-size: 0.85em;
+            color: #777;
+            margin: 0 auto 10px;
+            max-width: 700px;
+            padding-left: 10px;
+            border-left: 3px solid var(--primary-blue);
+        }
 
         .search-box { display: flex; gap: 12px; margin-bottom: 30px; }
         #fishName { 
@@ -73,49 +85,29 @@
         }
         #searchBtn:hover { background: var(--dark-blue); }
 
+        /* 魚類卡片佈局 */
         .fish-card {
-            background: #fff; 
-            border-radius: 16px; 
-            padding: 25px; 
-            margin-bottom: 24px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06); 
-            display: flex; 
-            gap: 25px;
-            align-items: flex-start; 
-            transition: 0.2s; 
-            border: 1px solid #eef2f6;
+            background: #fff; border-radius: 16px; padding: 25px; margin-bottom: 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06); display: flex; gap: 25px;
+            align-items: flex-start; transition: 0.2s; border: 1px solid #eef2f6;
         }
         .fish-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0, 119, 190, 0.12); }
         
         .fish-img-container {
-            flex: 0 0 240px; 
-            height: 160px; 
-            background: #fdfdfd; 
-            border-radius: 12px;
-            overflow: hidden; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            border: 1px solid #f0f0f0;
+            flex: 0 0 240px; height: 160px; background: #fdfdfd; border-radius: 12px;
+            overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #f0f0f0;
         }
         .fish-img-container img { width: 100%; height: 100%; object-fit: contain; }
         
         .fish-info { flex: 1; }
         .fish-title { margin: 0; color: var(--primary-blue); font-size: 1.6em; font-weight: bold; }
         .fish-sci-name { font-size: 1.1em; color: var(--danger-red); font-style: italic; margin-bottom: 12px; opacity: 0.9; }
-        .aliases-box { 
-            font-size: 0.9em; 
-            color: #666; 
-            background: #f8f9fa; 
-            padding: 8px 12px; 
-            border-radius: 8px; 
-            margin-bottom: 15px; 
-            border-left: 4px solid #ddd; 
-        }
+        .aliases-box { font-size: 0.9em; color: #666; background: #f8f9fa; padding: 8px 12px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ddd; }
         
         .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.9em; margin-bottom: 15px; }
         .data-item strong { color: #888; font-size: 0.85em; display: block; margin-bottom: 2px; }
 
+        /* 保育狀態排版 - Grid 確保欄位絕對對齊 */
         .conservation-section {
             margin: 15px 0;
             padding-top: 15px;
@@ -142,52 +134,24 @@
 
         .action-buttons { display: flex; gap: 8px; padding-top: 15px; flex-wrap: wrap; }
         .btn { 
-            flex: 1; 
-            min-width: 100px; 
-            padding: 10px; 
-            border-radius: 8px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            border: none; 
-            color: white; 
-            text-decoration: none; 
-            text-align: center; 
-            font-size: 0.85em; 
-            transition: 0.2s; 
+            flex: 1; min-width: 100px; padding: 10px; border-radius: 8px; 
+            font-weight: bold; cursor: pointer; border: none; color: white; 
+            text-decoration: none; text-align: center; font-size: 0.85em; transition: 0.2s; 
         }
         .btn-wiki { background: var(--primary-blue); }
         .btn-taicol { background: #ef6c00; }
         .btn-fishbase { background: var(--accent-green); }
         .btn-sealife { background: var(--sealife-teal); }
-        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
-        .wiki-content { 
-            display: none; 
-            margin-top: 15px; 
-            padding: 18px; 
-            background: #f0f7ff; 
-            border-radius: 12px; 
-            border-left: 5px solid var(--primary-blue); 
-            font-size: 0.95em; 
-            line-height: 1.7; 
-        }
+        .wiki-content { display: none; margin-top: 15px; padding: 18px; background: #f0f7ff; border-radius: 12px; border-left: 5px solid var(--primary-blue); font-size: 0.95em; line-height: 1.7; }
         
-        .data-credits { 
-            text-align: center; 
-            font-size: 0.85em; 
-            color: #999; 
-            margin-top: 50px; 
-            padding: 30px; 
-            border-top: 1px solid #eee; 
-            line-height: 2; 
-        }
+        .data-credits { text-align: center; font-size: 0.85em; color: #999; margin-top: 50px; padding: 30px; border-top: 1px solid #eee; line-height: 2; }
         .data-credits a { color: var(--primary-blue); text-decoration: none; font-weight: bold; }
         
         @media (max-width: 600px) {
             .fish-card { flex-direction: column; padding: 20px; }
             .fish-img-container { width: 100%; flex: none; height: 180px; }
             .search-box { flex-direction: column; }
-            .conservation-tags { grid-template-columns: repeat(3, 1fr); gap: 10px; }
             .btn { min-width: 140px; }
         }
     </style>
@@ -195,8 +159,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🐟 認識臺灣水生動植物圖鑑</h1>
-            <p class="intro-text">—— 撥開混沌的深淵，搜尋潛藏於秘典中的幻獸學名 ——</p>
+            <h1>🔱 蒼海契約：臺灣水域動植幻獸秘典</h1>
+            <p class="intro-text">—— 於湛藍深淵中甦醒，觀測萬千生命的真實形態 ——</p>
             <div class="warning">
                 📜 <b>契約條款：</b> 本系統之卷宗同步自 <b>臺灣物種名錄 (TaiCOL)</b> 秘典。
                 然而，在真理的邊界，海與陸的界線早已模糊，系統尚未覺醒辨別深淵禁忌與陸上走獸的能力。
@@ -205,11 +169,21 @@
                 此乃孤高觀測者的自助之路。若見非水之物，莫驚，那僅是現實與虛幻交織的殘響。
             </div>
         </div>
+
+        <div class="search-guide">
+            <b>🔮 檢索指引：</b><br>
+            • 輸入 <b>俗名</b>：喚醒眾生口耳相傳的稱呼（例：櫻花鉤吻鮭）<br>
+            • 輸入 <b>真名</b>：解析生命本源的學名代碼（例：Oncorhynchus masou）<br>
+            • 輸入 <b>血系</b>：追溯遠古的分類族群（例：慈鯛科）
+        </div>
+
         <div class="search-box">
             <input type="text" id="fishName" placeholder="輸入關鍵字，啟動檢索陣..." autocomplete="off">
             <button id="searchBtn">🔍 啟動</button>
         </div>
+
         <div id="result"></div>
+
         <div class="data-credits">
             資料來源：<a href="https://taicol.tw/" target="_blank">TaiCOL</a> | 
             <a href="https://www.fishbase.se/" target="_blank">FishBase</a> | 

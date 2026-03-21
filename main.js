@@ -5,7 +5,7 @@ const resultDiv = document.querySelector('#result');
 // 💡 0. 支援 Enter 鍵直接搜尋
 fishInput.addEventListener('keypress', function (e) {
     if (e.key === 'Enter') {
-        e.preventDefault(); // 避免觸發預設表單提交
+        e.preventDefault(); 
         searchBtn.click();
     }
 });
@@ -50,29 +50,47 @@ window.fetchWikiData = async function(sciName, btnElement) {
     }
 };
 
-// 💡 2. 保育燈號轉換器
+// 💡 2. 專業版：IUCN & 臺灣紅皮書 燈號轉換器 (去除「國家」二字)
 function getConservationStyle(code) {
-    if (!code || code === 'null') return { label: '無紀錄', bg: '#f5f5f5', color: '#aaa', border: '#eee' };
-    const upperCode = code.toUpperCase().replace(/^N/, ''); 
+    if (!code || code === 'null') return { html: `<span style="display:inline-block; background:#f5f5f5; color:#aaa; border:1px solid #eee; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">無紀錄</span>` };
+    
+    const upperCode = code.toUpperCase();
+    
     const styleMap = {
+        // --- 滅絕等級 ---
         'EX': { label: '絕滅', bg: '#000000', color: '#fff', border: '#000' },
         'EW': { label: '野外絕滅', bg: '#4a148c', color: '#fff', border: '#4a148c' },
-        'RE': { label: '區域滅絕', bg: '#311b92', color: '#fff', border: '#311b92' },
+        'RE': { label: '區域滅絕', bg: '#311b92', color: '#fff', border: '#311b92' }, // 臺灣紅皮書特有
+        
+        // --- 全球受威脅等級 (IUCN) ---
         'CR': { label: '極危', bg: '#d32f2f', color: '#fff', border: '#b71c1c' },
         'EN': { label: '瀕危', bg: '#f44336', color: '#fff', border: '#d32f2f' },
         'VU': { label: '易危', bg: '#ff9800', color: '#fff', border: '#f57c00' },
-        'CD': { label: '依賴保育', bg: '#c0ca33', color: '#000', border: '#afb42b' },
         'NT': { label: '近危', bg: '#8bc34a', color: '#000', border: '#689f38' },
         'LC': { label: '無危', bg: '#4caf50', color: '#fff', border: '#388e3c' },
+        'CD': { label: '依賴保育', bg: '#c0ca33', color: '#000', border: '#afb42b' },
+        
+        // --- 國家受威脅等級 (臺灣紅皮書專用，字首為 N，但顯示文字不加「國家」) ---
+        'NCR': { label: '極危', bg: '#d32f2f', color: '#fff', border: '#b71c1c' },
+        'NEN': { label: '瀕危', bg: '#f44336', color: '#fff', border: '#d32f2f' },
+        'NVU': { label: '易危', bg: '#ff9800', color: '#fff', border: '#f57c00' },
+        'NNT': { label: '近危', bg: '#8bc34a', color: '#000', border: '#689f38' },
+        'NLC': { label: '無危', bg: '#4caf50', color: '#fff', border: '#388e3c' },
+        
+        // --- 其他狀態 ---
         'DD': { label: '數據缺乏', bg: '#9e9e9e', color: '#fff', border: '#757575' },
         'NE': { label: '未評估', bg: '#e0e0e0', color: '#000', border: '#bdbdbd' },
         'NA': { label: '不適用', bg: '#e0e0e0', color: '#000', border: '#bdbdbd' }
     };
-    const config = styleMap[upperCode] || { label: upperCode, bg: '#ffffff', color: '#000', border: '#ccc' };
-    return { html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">${config.label} (${upperCode})</span>` };
+
+    const config = styleMap[upperCode] || { label: '未知分級', bg: '#ffffff', color: '#000', border: '#ccc' };
+    
+    return { 
+        html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow:0 1px 3px rgba(0,0,0,0.1);">${config.label} (${upperCode})</span>` 
+    };
 }
 
-// 💡 3. 極速版搜尋邏輯 (移除所有沉重過濾器)
+// 💡 3. 極速版搜尋邏輯
 searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
@@ -93,7 +111,6 @@ searchBtn.addEventListener('click', async () => {
 
         const resultMap = new Map();
         
-        // 快速整理資料
         const addTaxonData = (dataList) => {
             if (dataList) {
                 dataList.forEach(item => { 
@@ -104,7 +121,6 @@ searchBtn.addEventListener('click', async () => {
         addTaxonData(commonRes.data);
         addTaxonData(groupRes.data);
 
-        // 去重
         const matchIdsToFetch = new Set();
         if (matchRes.data) {
             matchRes.data.forEach(item => { 
@@ -112,7 +128,6 @@ searchBtn.addEventListener('click', async () => {
             });
         }
 
-        // 批量抓取詳細資料 (上限 30 筆)
         const detailPromises = Array.from(matchIdsToFetch).slice(0, 30).map(async (tid) => {
             try {
                 const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?taxon_id=${tid}`)}`);
@@ -128,7 +143,6 @@ searchBtn.addEventListener('click', async () => {
             }
         });
 
-        // 💡 極簡過濾器：只要是「種」或「亞種」就放行，不管牠是蟲是鳥！
         let fishList = Array.from(resultMap.values()).filter(fish => {
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
             const currentRank = fish.rank ? fish.rank.toLowerCase() : '';
@@ -158,7 +172,10 @@ searchBtn.addEventListener('click', async () => {
 
             const citesTag = fish.cites ? `<span style="display:inline-block; background:#1976d2; color:white; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-size:0.85em;">無紀錄</span>';
             const iucnTag = getConservationStyle(fish.iucn).html;
+            
+            // 獨立渲染臺灣紅皮書狀態
             const redlistTag = getConservationStyle(fish.redlist).html;
+            
             const inTaiwan = fish.is_in_taiwan ? '<span style="color:#2e7d32; font-weight:bold;">✔</span>' : '<span style="color:var(--danger-red); font-weight:bold;">✖</span>';
             const isEndemic = fish.is_endemic ? '<span style="color:#2e7d32; font-weight:bold;">✔</span>' : '<span style="color:#999;">✖</span>';
 
@@ -197,6 +214,6 @@ searchBtn.addEventListener('click', async () => {
         console.error("❌ 搜尋錯誤:", error);
         resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px; background:#fff3f3; border-radius:12px;">⚠️ API 連線逾時，請檢查網路或稍後再試。</div>`;
     } finally {
-        searchBtn.disabled = false; // 恢復按鈕狀態
+        searchBtn.disabled = false;
     }
 });

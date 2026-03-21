@@ -117,9 +117,9 @@ searchBtn.addEventListener('click', async () => {
             const citesTag = fish.cites ? `<span style="background:#1976d2; color:white; padding:4px 12px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; display: inline-block;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa; font-weight:bold; font-size:0.85em; display:inline-block; padding:3px 0;">無紀錄</span>';
             const rankLabel = (fish.rank || '').toLowerCase() === 'species' ? '種' : '亞種';
             
-            // 🚀 生成外部連結
             const slug = sciName.replace(/\s+/g, '-');
             const fishDbUrl = `https://fishdb.sinica.edu.tw/chi/species.php?science=${sciName.replace(/\s+/g, '+')}`;
+            const faoUrl = `https://www.fao.org/fishery/en/facetsearch/species?q=${encodeURIComponent(sciName)}`; // 🚀 新增 FAO 連結
 
             return `
                 <div class="fish-card">
@@ -158,6 +158,7 @@ searchBtn.addEventListener('click', async () => {
                             <button class="btn btn-wiki" onclick="fetchWikiData('${sciName}', this)">📸 百科描述</button>
                             <a class="btn btn-taicol" href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank">🏷️ TaiCOL</a>
                             <a class="btn btn-fishdb" href="${fishDbUrl}" target="_blank">🏛️ FishDB</a>
+                            <a class="btn btn-fao" href="${faoUrl}" target="_blank">🌏 FAO</a>
                             <a class="btn btn-fishbase" href="https://www.fishbase.se/summary/${slug}" target="_blank">➔ FishBase</a>
                             <a class="btn btn-sealife" href="https://sealifebase.ca/summary/${slug}" target="_blank">➔ SeaLifeBase</a>
                         </div>
@@ -167,7 +168,6 @@ searchBtn.addEventListener('click', async () => {
             `;
         }).join('');
 
-        // 圖片載入
         list.forEach(async (fish) => {
             const sciName = fish.scientific_name || fish.simple_name;
             const imgDiv = document.getElementById(`img-${fish.taxon_id}`);

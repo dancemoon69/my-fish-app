@@ -8,7 +8,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
-    <title>認識臺灣水生動物圖鑑</title>
+    <title>臺灣水生動物圖鑑</title>
     
     <style>
         /* =========================================
@@ -34,13 +34,12 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
-            background: transparent;
         }
 
         /* =========================================
-           2. 標題與搜尋框 UI 設計
+           2. 標題與搜尋框 UI
         ========================================= */
         .header {
             text-align: center;
@@ -54,10 +53,10 @@
             font-size: 2.2em;
         }
 
-        .header p {
-            color: var(--text-muted);
-            font-size: 0.95em;
-            margin: 0;
+        .header .warning { 
+            color: var(--danger-red); font-weight: bold; font-size: 0.85em; 
+            background: #fff3f3; padding: 8px 15px; border-radius: 20px; 
+            display: inline-block; margin-top: 10px; border: 1px solid #ffcdd2;
         }
 
         .search-box {
@@ -73,7 +72,7 @@
             border: 2px solid #ddd;
             border-radius: 12px;
             outline: none;
-            transition: all 0.3s ease;
+            transition: 0.3s;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
@@ -91,16 +90,12 @@
             border-radius: 12px;
             cursor: pointer;
             font-weight: bold;
-            transition: background-color 0.3s ease, transform 0.1s;
             box-shadow: 0 4px 10px rgba(0, 119, 190, 0.2);
             white-space: nowrap;
         }
 
-        #searchBtn:hover { background-color: var(--dark-blue); }
-        #searchBtn:active { transform: scale(0.98); }
-
         /* =========================================
-           3. 魚類卡片與 UI 元件設計
+           3. 魚類卡片佈局 (左右並排版)
         ========================================= */
         .fish-card {
             background: #ffffff;
@@ -109,25 +104,48 @@
             margin-bottom: 24px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
             border: 1px solid #e0e8f0;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex; /* 桌面版左右並排 */
+            gap: 25px;
+            align-items: flex-start;
+            transition: 0.2s ease;
         }
 
         .fish-card:hover {
-            transform: translateY(-2px);
+            transform: translateY(-3px);
             box-shadow: 0 12px 32px rgba(0, 119, 190, 0.15);
         }
 
+        /* 圖片容器：不裁切生物 */
+        .fish-img-container {
+            flex: 0 0 260px; /* 固定寬度 */
+            height: 180px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #eee;
+        }
+
+        .fish-img-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* 💡 確保不裁切到生物身體 */
+        }
+
+        .fish-info { flex: 1; }
+
         .fish-title {
-            margin: 0 0 4px 0;
+            margin: 0 0 5px 0;
             color: var(--primary-blue);
-            font-size: 1.4em;
-            font-weight: 700;
+            font-size: 1.5em;
         }
 
         .fish-sci-name {
-            font-size: 1.05em;
+            font-size: 1.1em;
             color: var(--danger-red);
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             font-style: italic;
         }
 
@@ -135,124 +153,90 @@
             font-size: 0.9em;
             color: var(--text-muted);
             background: #f8f9fa;
-            padding: 10px 14px;
+            padding: 8px 12px;
             border-radius: 8px;
-            border-left: 4px solid var(--primary-blue);
-            margin-bottom: 16px;
+            margin-bottom: 15px;
         }
 
         .data-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 10px;
             font-size: 0.9em;
-            color: #444;
-            margin-bottom: 16px;
-            line-height: 1.5;
+            margin-bottom: 15px;
         }
-
-        .data-item strong { color: var(--text-muted); }
 
         .conservation-box {
             background: #fdfaf6;
-            padding: 16px;
-            border-radius: 12px;
+            padding: 12px;
+            border-radius: 10px;
             border: 1px solid #f0e6d2;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .conservation-title {
-            font-size: 0.85em;
+            font-size: 0.8em;
+            font-weight: bold;
             color: #795548;
-            font-weight: 700;
-            margin-bottom: 12px;
-            border-bottom: 1px solid #f0e6d2;
-            padding-bottom: 6px;
+            margin-bottom: 8px;
         }
 
-        .conservation-tags {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
+        .conservation-tags { display: flex; gap: 15px; flex-wrap: wrap; }
+        .tag-group { display: flex; flex-direction: column; gap: 4px; }
+        .tag-label { font-size: 0.7em; color: #999; }
 
-        .tag-group { display: flex; flex-direction: column; gap: 6px; }
-        .tag-label { font-size: 0.75em; color: #888; }
-
+        /* 按鈕區 */
         .action-buttons {
             display: flex;
-            gap: 12px;
-            border-top: 1px dashed #e0e0e0;
-            padding-top: 20px;
-            flex-wrap: wrap;
+            gap: 10px;
+            padding-top: 15px;
+            border-top: 1px dashed #eee;
         }
 
-        .btn-wiki, .btn-fishbase, .btn-taicol {
+        .btn {
             flex: 1;
-            min-width: 140px;
-            padding: 12px 16px;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 0.95em;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
             text-align: center;
             text-decoration: none;
-            border: none;
+            font-size: 0.9em;
             cursor: pointer;
-            transition: all 0.3s ease;
+            border: none;
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            color: white;
         }
 
         .btn-wiki { background: var(--primary-blue); }
-        .btn-wiki:hover { background: var(--dark-blue); }
         .btn-taicol { background: #ef6c00; }
-        .btn-taicol:hover { background: #d66200; }
         .btn-fishbase { background: var(--accent-green); }
-        .btn-fishbase:hover { background: #00332a; }
 
         .wiki-content {
             display: none;
-            margin-top: 16px;
-            padding: 16px;
+            margin-top: 15px;
+            padding: 15px;
             background: #f0f7ff;
-            border-radius: 12px;
+            border-radius: 10px;
+            font-size: 0.9em;
             border-left: 4px solid var(--primary-blue);
-            font-size: 0.95em;
-            line-height: 1.6;
-            color: var(--text-main);
-            animation: fadeIn 0.4s ease;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* 資料來源宣告 Footer */
         .data-credits {
             text-align: center;
-            font-size: 0.85em;
+            font-size: 0.8em;
             color: #888;
             margin-top: 40px;
-            padding-top: 20px;
+            padding: 20px;
             border-top: 1px solid #ddd;
-            line-height: 1.8;
         }
 
-        .data-credits a {
-            color: var(--primary-blue);
-            text-decoration: none;
-            font-weight: bold;
-        }
-
+        /* 手機版適應 */
         @media (max-width: 600px) {
+            .fish-card { flex-direction: column; }
+            .fish-img-container { width: 100%; flex: none; height: 200px; }
             .search-box { flex-direction: column; }
-            .data-grid { grid-template-columns: 1fr; }
-            .header h1 { font-size: 1.6em; }
-            .action-buttons { flex-direction: column; }
         }
     </style>
 </head>
@@ -260,38 +244,32 @@
 
     <div class="container">
         <div class="header">
-            <h1>🐟 認識臺灣水生動物圖鑑</h1>
-            <p>請輸入動物俗名、學名或科別（例如：石斑、吳郭魚、慈鯛科）</p>
-            <p style="color: #d32f2f; font-weight: bold; font-size: 0.9em; margin-top: 10px; background: #fff3f3; display: inline-block; padding: 5px 15px; border-radius: 20px;">
-                💡 註明：如果找到不是水生動物是正常的，因爲資料排除不了ＸＤＤＤＤ
-            </p>
+            <h1>🐟 臺灣水生動物圖鑑</h1>
+            <p>輸入俗名、學名或科別進行檢索</p>
+            <div class="warning">💡 註明：如果找到不是水生動物是正常的，因爲資料排除不了ＸＤＤＤＤ</div>
         </div>
 
         <div class="search-box">
-            <input type="text" id="fishName" placeholder="開始探索圖鑑資料..." autocomplete="off">
-            <button id="searchBtn">🔍 開始檢索</button>
+            <input type="text" id="fishName" placeholder="搜尋關鍵字後按 Enter..." autocomplete="off">
+            <button id="searchBtn">🔍 搜尋</button>
         </div>
 
-        <div id="result">
-            </div>
+        <div id="result"></div>
 
         <div class="data-credits">
-            資料來源：<a href="https://taicol.tw/" target="_blank">臺灣物種名錄 (TaiCOL)</a> | 
-            <a href="https://www.fishbase.se/" target="_blank">世界魚類資料庫 (FishBase)</a> | 
-            <a href="https://zh.wikipedia.org/" target="_blank">維基百科 (Wikipedia)</a>
-            <br><br>
-            <small>※ 系統透過開放 API 介接，實際物種資訊請以官方發布為準。</small>
+            資料來源：<a href="https://taicol.tw/" target="_blank">TaiCOL</a> | 
+            <a href="https://www.fishbase.se/" target="_blank">FishBase</a> | 
+            <a href="https://zh.wikipedia.org/" target="_blank">Wikipedia</a>
+            <br>※ 系統透過開放 API 介接，資訊僅供參考。
         </div>
     </div>
 
     <script>
         (function() {
             const script = document.createElement('script');
-            // 在檔名後方加上亂數或時間戳記，徹底殺死快取
             script.src = 'main.js?v=' + Date.now();
             script.async = true;
             document.body.appendChild(script);
-            console.log("🚀 強制更新：已載入最新腳本版本 " + script.src);
         })();
     </script>
 

@@ -57,20 +57,27 @@ function getConservationStyle(code) {
     const upperCode = code.toUpperCase();
     
     const styleMap = {
+        // --- 滅絕等級 ---
         'EX': { label: '絕滅', bg: '#000000', color: '#fff', border: '#000' },
         'EW': { label: '野外絕滅', bg: '#4a148c', color: '#fff', border: '#4a148c' },
-        'RE': { label: '區域滅絕', bg: '#311b92', color: '#fff', border: '#311b92' },
+        'RE': { label: '區域滅絕', bg: '#311b92', color: '#fff', border: '#311b92' }, // 臺灣紅皮書特有
+        
+        // --- 全球受威脅等級 (IUCN) ---
         'CR': { label: '極危', bg: '#d32f2f', color: '#fff', border: '#b71c1c' },
         'EN': { label: '瀕危', bg: '#f44336', color: '#fff', border: '#d32f2f' },
         'VU': { label: '易危', bg: '#ff9800', color: '#fff', border: '#f57c00' },
         'NT': { label: '近危', bg: '#8bc34a', color: '#000', border: '#689f38' },
         'LC': { label: '無危', bg: '#4caf50', color: '#fff', border: '#388e3c' },
         'CD': { label: '依賴保育', bg: '#c0ca33', color: '#000', border: '#afb42b' },
+        
+        // --- 國家受威脅等級 (臺灣紅皮書專用，字首為 N，但顯示文字不加「國家」) ---
         'NCR': { label: '極危', bg: '#d32f2f', color: '#fff', border: '#b71c1c' },
         'NEN': { label: '瀕危', bg: '#f44336', color: '#fff', border: '#d32f2f' },
         'NVU': { label: '易危', bg: '#ff9800', color: '#fff', border: '#f57c00' },
         'NNT': { label: '近危', bg: '#8bc34a', color: '#000', border: '#689f38' },
         'NLC': { label: '無危', bg: '#4caf50', color: '#fff', border: '#388e3c' },
+        
+        // --- 其他狀態 ---
         'DD': { label: '數據缺乏', bg: '#9e9e9e', color: '#fff', border: '#757575' },
         'NE': { label: '未評估', bg: '#e0e0e0', color: '#000', border: '#bdbdbd' },
         'NA': { label: '不適用', bg: '#e0e0e0', color: '#000', border: '#bdbdbd' }
@@ -148,22 +155,27 @@ searchBtn.addEventListener('click', async () => {
             return;
         }
 
-        // 🖼️ [新增功能] 批量抓取物種圖片縮圖
-        const fishNames = fishList.map(f => f.simple_name || f.scientific_name).join('|');
-        const imgMap = {};
-        try {
-            const imgRes = await fetch(`https://zh.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=thumbnail&pithumbsize=400&titles=${encodeURIComponent(fishNames)}&origin=*`).then(r => r.json());
-            if (imgRes.query && imgRes.query.pages) {
-                Object.values(imgRes.query.pages).forEach(p => {
-                    if (p.thumbnail) imgMap[p.title] = p.thumbnail.source;
-                });
-            }
-        } catch (e) { console.warn("圖片抓取失敗"); }
-
-        // 💡 4. 渲染卡片結果
+        // 💡 4. 渲染卡片結果 (🖼️ [新增功能] 圖片抓取邏輯)
         let htmlContent = `<p style="margin-bottom:20px; color:var(--text-muted); font-weight:bold;">共找到 ${fishList.length} 筆資料：</p>`;
         
-        htmlContent += fishList.map(fish => {
+        // 圖片抓取函數 (Wikipedia Page Images API)
+        const fetchImage = async (sciName) => {
+            try {
+                const wikiTitle = sciName.replace(/\s+/g, '_');
+                const imgRes = await fetch(`https://zh.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=thumbnail&pithumbsize=400&titles=${encodeURIComponent(wikiTitle)}&origin=*`).then(r => r.json());
+                if (imgRes.query && imgRes.query.pages) {
+                    const pages = imgRes.query.pages;
+                    const firstPageKey = Object.keys(pages)[0];
+                    if (pages[firstPageKey].thumbnail) {
+                        return `<img src="${pages[firstPageKey].thumbnail.source}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">`;
+                    }
+                }
+            } catch (e) { console.warn("圖片抓取失敗"); }
+            return ''; // 沒圖片則回傳空字串
+        };
+
+        // 🖼️ 為了不卡住搜尋速度，圖片採用「載入後顯示」的方式
+        const fishCardsHtml = await Promise.all(fishList.map(async fish => {
             const sciName = fish.simple_name || fish.scientific_name || "Unknown";
             const alienMap = { 'native': '原生種', 'naturalized': '歸化種', 'invasive': '入侵種', 'cultured': '栽培豢養/養殖' };
             const alienStatus = fish.alien_type ? (alienMap[fish.alien_type] || fish.alien_type) : '未標示';
@@ -184,14 +196,12 @@ searchBtn.addEventListener('click', async () => {
             const inTaiwan = fish.is_in_taiwan ? '<span style="color:#2e7d32; font-weight:bold;">✔</span>' : '<span style="color:var(--danger-red); font-weight:bold;">✖</span>';
             const isEndemic = fish.is_endemic ? '<span style="color:#2e7d32; font-weight:bold;">✔</span>' : '<span style="color:#999;">✖</span>';
 
-            // 🖼️ 處理卡片頂部圖片
-            const thumbUrl = imgMap[sciName] || '';
-            const imgTag = thumbUrl ? `<img src="${thumbUrl}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">` : '';
+            // 🖼️ 抓取圖片 HTML
+            const imgHtml = await fetchImage(sciName);
 
             return `
                 <div class="fish-card">
-                    ${imgTag}
-                    <h3 class="fish-title">🐟 ${fish.common_name_c || '未知中文名'}</h3>
+                    ${imgHtml} <h3 class="fish-title">🐟 ${fish.common_name_c || '未知中文名'}</h3>
                     <div class="fish-sci-name">${sciName}</div>
                     <div class="fish-aliases"><strong>別名：</strong> ${fish.alternative_name_c || '無'}</div>
                     <div class="data-grid">
@@ -216,9 +226,9 @@ searchBtn.addEventListener('click', async () => {
                     <div class="wiki-content"></div>
                 </div>
             `;
-        }).join('');
+        }));
 
-        resultDiv.innerHTML = htmlContent;
+        resultDiv.innerHTML = htmlContent + fishCardsHtml.join('');
 
     } catch (error) {
         console.error("❌ 搜尋錯誤:", error);

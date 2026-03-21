@@ -91,7 +91,6 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 🚀 核心過濾器
         let list = Array.from(resultMap.values()).filter(f => {
             const rank = (f.rank || '').toLowerCase();
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
@@ -120,6 +119,7 @@ searchBtn.addEventListener('click', async () => {
             // 🚀 生成外部連結
             const slug = sciName.replace(/\s+/g, '-');
             const fishDbUrl = `https://fishdb.sinica.edu.tw/chi/species.php?science=${sciName.replace(/\s+/g, '+')}`;
+            const faoUrl = `https://www.fao.org/fishery/en/species/search?q=${sciName.replace(/\s+/g, '+')}`; // 🚀 介接 FAO 物種事實表
 
             return `
                 <div class="fish-card">
@@ -158,6 +158,7 @@ searchBtn.addEventListener('click', async () => {
                             <button class="btn btn-wiki" onclick="fetchWikiData('${sciName}', this)">📸 百科描述</button>
                             <a class="btn btn-taicol" href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank">🏷️ TaiCOL</a>
                             <a class="btn btn-fishdb" href="${fishDbUrl}" target="_blank">🏛️ FishDB</a>
+                            <a class="btn btn-fao" href="${faoUrl}" target="_blank">📊 FAO 統計</a>
                             <a class="btn btn-fishbase" href="https://www.fishbase.se/summary/${slug}" target="_blank">➔ FishBase</a>
                             <a class="btn btn-sealife" href="https://sealifebase.ca/summary/${slug}" target="_blank">➔ SeaLifeBase</a>
                         </div>

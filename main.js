@@ -2,80 +2,65 @@ const searchBtn = document.querySelector('#searchBtn');
 const fishInput = document.querySelector('#fishName');
 const resultDiv = document.querySelector('#result');
 
-// 💡 1. 建立 FishBase 專用爬蟲引擎 (掛載到 window 供按鈕呼叫)
-window.fetchFishBase = async function(sciName, btnElement) {
-    const targetDiv = btnElement.nextElementSibling;
+// 💡 1. 全新：維基百科 API 萃取引擎
+window.fetchWikiData = async function(sciName, btnElement) {
+    const targetDiv = btnElement.parentElement.nextElementSibling;
     const originalBtnText = btnElement.innerHTML;
     
-    // 改變按鈕狀態，顯示載入中
-    btnElement.innerHTML = '⏳ 正在潛入 FishBase 抓取...';
+    // 改變按鈕狀態
+    btnElement.innerHTML = '⏳ 正在調閱百科圖鑑...';
     btnElement.disabled = true;
     btnElement.style.background = '#999';
     targetDiv.style.display = 'block';
-    targetDiv.innerHTML = '<div style="color:#666; font-size:0.9em; text-align:center;">正在跨海解析原文資料，這可能需要幾秒鐘...</div>';
+    targetDiv.innerHTML = '<div style="color:#666; font-size:0.9em; text-align:center;">正在載入百科文獻與影像...</div>';
 
-    const cleanSciName = sciName.replace(/\s+/g, '-');
-    const url = `https://www.fishbase.se/summary/${cleanSciName}`;
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-
+    // 維基百科 API 規定空白要換成底線
+    const wikiTitle = sciName.replace(/\s+/g, '_');
+    
     try {
-        const res = await fetch(proxyUrl);
-        if (!res.ok) throw new Error('連線被拒');
-        const html = await res.text();
+        // 先嘗試抓取「中文」維基百科
+        let res = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
         
-        // 將抓回來的 HTML 字串轉成虛擬的 DOM 元素進行解析
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
+        // 如果沒有中文版，自動降級嘗試「英文」維基百科
+        if (!res.ok) {
+            res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
+        }
 
-        // 萃取邏輯：針對 FishBase 老舊的 class 結構進行捕捉
-        let maxLength = "無紀錄";
-        let biology = "無紀錄";
+        if (!res.ok) throw new Error('Wiki API 查無資料');
+        
+        const data = await res.json();
+        
+        // 解析縮圖 (如果有照片就顯示)
+        let imgHtml = '';
+        if (data.thumbnail && data.thumbnail.source) {
+            imgHtml = `<img src="${data.thumbnail.source}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px; float: right; margin: 0 0 10px 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">`;
+        }
 
-        // 抓取體長
-        const spans = doc.querySelectorAll('span.slabel');
-        spans.forEach(span => {
-            if (span.textContent.includes('Max length')) {
-                // 體長通常跟在該標籤的父元素文字中
-                maxLength = span.parentNode.textContent.replace('Max length :', '').replace(/\s+/g, ' ').trim();
-            }
-        });
-
-        // 抓取生物學特徵 (Biology)
-        const h1s = doc.querySelectorAll('h1.slabel');
-        h1s.forEach(h1 => {
-            if (h1.textContent.includes('Biology')) {
-                // 抓取標題後面的文字節點
-                let nextNode = h1.nextSibling;
-                let bioText = "";
-                while(nextNode && nextNode.nodeName !== 'H1' && nextNode.nodeName !== 'DIV') {
-                    if (nextNode.textContent) bioText += nextNode.textContent;
-                    nextNode = nextNode.nextSibling;
-                }
-                if(bioText.trim()) biology = bioText.trim();
-            }
-        });
-
-        // 將抓下來的英文原文顯示在卡片內
+        // 渲染資料
         targetDiv.innerHTML = `
-            <div style="font-size: 0.85em; color: #333; line-height: 1.6;">
-                <p style="margin:5px 0; color:#0077be;"><strong>📏 體長與特徵 (Size & Info)：</strong><br> <span style="color:#444;">${maxLength}</span></p>
-                <p style="margin:5px 0; color:#2e7d32;"><strong>🧬 生物學特性 (Biology)：</strong><br> <span style="color:#444;">${biology}</span></p>
-                <div style="text-align:right; margin-top:8px;">
-                    <a href="${url}" target="_blank" style="color:#888; text-decoration:underline; font-size:0.9em;">前往 FishBase 網站</a>
+            <div style="font-size: 0.9em; color: #333; line-height: 1.6; text-align: justify; overflow: hidden;">
+                ${imgHtml}
+                <p style="margin: 0 0 8px 0; color: #2e7d32;"><strong>📖 百科摘要 (${data.title})：</strong></p>
+                <p style="margin: 0; color: #444;">${data.extract || '該物種目前暫無詳細文字描述。'}</p>
+                <div style="clear: both; text-align: right; margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    <a href="${data.content_urls.desktop.page}" target="_blank" style="color: #0077be; text-decoration: none; font-weight: bold; font-size: 0.9em;">➔ 閱讀完整百科</a>
                 </div>
             </div>
         `;
-        btnElement.style.display = 'none'; // 抓取成功後隱藏按鈕
+        btnElement.style.display = 'none'; // 載入成功後隱藏按鈕
 
     } catch (error) {
-        targetDiv.innerHTML = `<div style="color:#d32f2f; font-size:0.85em;">⚠️ FishBase 伺服器超時或阻擋了請求。<a href="${url}" target="_blank" style="color:#0077be;">請點此直接前往網站</a></div>`;
+        targetDiv.innerHTML = `
+            <div style="color:#d32f2f; font-size:0.85em; text-align:center; padding:10px; background:#fff3f3; border-radius:8px;">
+                ⚠️ 百科資料庫中暫無此學名 (<i>${sciName}</i>) 的直接紀錄。
+            </div>`;
         btnElement.innerHTML = originalBtnText;
         btnElement.disabled = false;
         btnElement.style.background = '#0077be';
     }
 };
 
-// 💡 保育等級燈號轉換器 (維持不變)
+// 💡 保育等級燈號轉換器
 function getConservationStyle(code) {
     if (!code || code === 'null') return { label: '無紀錄', bg: '#f5f5f5', color: '#aaa', border: '#eee' };
     const upperCode = code.toUpperCase();
@@ -149,7 +134,7 @@ searchBtn.addEventListener('click', async () => {
             return;
         }
 
-        // 💡 3. 渲染結果 (替換原本的 href 按鈕為 onClick 爬蟲按鈕)
+        // 💡 3. 渲染結果
         resultDiv.innerHTML = `
             <p style="margin-bottom:15px; color:#666; font-size:0.9em;">共找到 ${fishList.length} 筆物種資料：</p>
             ${fishList.map(fish => {
@@ -200,11 +185,17 @@ searchBtn.addEventListener('click', async () => {
                             </div>
                         </div>
 
-                        <div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px; text-align: center;">
-                            <button onclick="fetchFishBase('${sciName}', this)" style="background: #0077be; color: white; border:none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor:pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.3s;">
-                                ⬇️ 展開 FishBase 摘要資料
-                            </button>
-                            <div class="fb-content" style="display:none; margin-top: 15px; padding: 15px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #0077be; text-align: left;"></div>
+                        <div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <button onclick="fetchWikiData('${sciName}', this)" style="background: #0077be; color: white; border:none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor:pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.3s; font-size: 0.9em;">
+                                    📸 載入百科圖文
+                                </button>
+                                <a href="https://www.fishbase.se/summary/${sciName.replace(/\s+/g, '-')}" target="_blank" 
+                                   style="color: #666; text-decoration: underline; font-size: 0.85em;">
+                                   跳轉 FishBase
+                                </a>
+                            </div>
+                            <div class="wiki-content" style="display:none; margin-top: 15px; padding: 15px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #0077be;"></div>
                         </div>
                     </div>
                 `;

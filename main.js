@@ -4,23 +4,41 @@ const resultDiv = document.querySelector('#result');
 
 searchBtn.addEventListener('click', async () => {
     const name = fishInput.value.trim();
-    if (!name) return;
+    if (!name) {
+        alert('請先輸入魚的名字喔！');
+        return;
+    }
 
     resultDiv.innerHTML = '正在大海中搜尋... 🔍';
 
-    // 1. 確保使用 https 協定
+    // 1. TaiCOL API 原始網址 (一定要 https)
     const targetUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(name)}`;
     
-    // 2. 換一個更強大的中轉站 corsproxy.io
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+    // 2. 使用 allorigins 的 raw 模式，直接拿原始資料
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
 
     try {
         const response = await fetch(proxyUrl);
         
-        if (!response.ok) throw new Error(`連線失敗 (${response.status})`);
+        if (!response.ok) throw new Error(`連線失敗: ${response.status}`);
 
-        const data = await response.json();
-        console.log('API 回傳資料：', data);
+        // 先拿回文字內容，我們來看看是不是真的 JSON
+        const rawText = await response.text();
+        console.log('原始回傳內容：', rawText);
+
+        // 嘗試解析 JSON
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch (e) {
+            // 如果解析失敗，看看是不是被轉成了 Data URL
+            if (rawText.startsWith('data:application/json')) {
+                const base64Data = rawText.split(',')[1];
+                data = JSON.parse(atob(base64Data)); // 解碼 base64
+            } else {
+                throw new Error('回傳格式錯誤，不是有效的 JSON');
+            }
+        }
 
         if (data.data && data.data.length > 0) {
             const fish = data.data[0];
@@ -40,11 +58,10 @@ searchBtn.addEventListener('click', async () => {
                 </div>
             `;
         } else {
-            resultDiv.innerHTML = '❌ 找不到這條魚，試試搜尋「鬼頭刀」或「虱目魚」。';
+            resultDiv.innerHTML = `❌ 在名錄中找不到「${name}」。<br><small>建議試試：鬼頭刀、虱目魚、白帶魚</small>`;
         }
     } catch (error) {
-        console.error('詳細錯誤訊息：', error);
-        // 這裡會顯示具體的錯誤原因
-        resultDiv.innerHTML = `⚠️ 搜尋失敗！<br>原因：${error.message}<br><small>請確認您的瀏覽器是否開啟了廣告阻擋器 (AdBlock)。</small>`;
+        console.error('詳細錯誤：', error);
+        resultDiv.innerHTML = `⚠️ 搜尋出錯！<br>原因：${error.message}<br><small>請確認您的網路環境或稍後再試。</small>`;
     }
 });

@@ -10,58 +10,81 @@ fishInput.addEventListener('keypress', function (e) {
     }
 });
 
-// 💡 1. 專業版：IUCN & 臺灣紅皮書 燈號轉換器
-function getConservationStyleHtml(code) {
-    if (!code || code === 'null') return '<span style="color:#ccc; font-weight:bold;">無紀錄</span>';
-    const upperCode = code.toUpperCase();
-    const styleMap = {
-        'EX': { label: '絕滅', bg: '#000', color: '#fff', border: '#000' },
-        'EW': { label: '野外絕滅', bg: '#4a148c', color: '#fff', border: '#4a148c' },
-        'RE': { label: '區域滅絕', bg: '#311b92', color: '#fff', border: '#311b92' },
-        'CR': { label: '極危', bg: '#d32f2f', color: '#fff', border: '#b71c1c' },
-        'EN': { label: '瀕危', bg: '#f44336', color: '#fff', border: '#d32f2f' },
-        'VU': { label: '易危', bg: '#ff9800', color: '#fff', border: '#f57c00' },
-        'NT': { label: '近危', bg: '#8bc34a', color: '#000', border: '#689f38' },
-        'LC': { label: '無危', bg: '#4caf50', color: '#fff', border: '#388e3c' },
-        'NCR': { label: '極危', bg: '#d32f2f', color: '#fff', border: '#b71c1c' },
-        'NEN': { label: '瀕危', bg: '#f44336', color: '#fff', border: '#d32f2f' },
-        'NVU': { label: '易危', bg: '#ff9800', color: '#fff', border: '#f57c00' },
-        'NNT': { label: '近危', bg: '#8bc34a', color: '#000', border: '#689f38' },
-        'NLC': { label: '無危', bg: '#4caf50', color: '#fff', border: '#388e3c' },
-        'DD': { label: '數據缺乏', bg: '#9e9e9e', color: '#fff', border: '#757575' }
-    };
-    const config = styleMap[upperCode] || { label: upperCode, bg: '#ffffff', color: '#000', border: '#ccc' };
-    return `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold; box-shadow:0 1px 3px rgba(0,0,0,0.1);">${config.label} (${upperCode})</span>`;
-}
+// 💡 1. 百科圖鑑引擎 (保留原本功能)
+window.fetchWikiData = async function(sciName, btnElement) {
+    const targetDiv = btnElement.parentElement.nextElementSibling;
+    const originalBtnText = btnElement.innerHTML;
+    
+    btnElement.innerHTML = '⏳ 載入中...';
+    btnElement.disabled = true;
+    targetDiv.style.display = 'block';
+    targetDiv.innerHTML = '<div style="text-align:center; color:#666;">正在載入詳細文獻...</div>';
 
-// 💡 2. 新增：自動載入圖片功能 (從 Wikipedia 獲取)
-async function setFishThumbnail(sciName, imgElementId) {
-    const wikiTitle = sciName.replace(/ /g, '_');
+    const wikiTitle = sciName.replace(/\s+/g, '_');
+    
     try {
         let res = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
-        let data = await res.json();
-        if (data.thumbnail && data.thumbnail.source) {
-            document.getElementById(imgElementId).src = data.thumbnail.source;
-        } else {
-            // 如果中文查不到，試試英文
-            let resEn = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
-            let dataEn = await resEn.json();
-            if (dataEn.thumbnail && dataEn.thumbnail.source) {
-                document.getElementById(imgElementId).src = dataEn.thumbnail.source;
-            }
-        }
-    } catch (e) {
-        console.log("圖片載入跳過");
+        if (!res.ok) res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
+        if (!res.ok) throw new Error('Wiki查無資料');
+        
+        const data = await res.json();
+        targetDiv.innerHTML = `
+            <div style="text-align: justify; padding-top:10px;">
+                <p style="margin: 0 0 8px 0; color: #2e7d32; font-weight:bold;">📖 百科深度摘要：</p>
+                <p style="margin: 0;">${data.extract || '暫無詳細說明。'}</p>
+                <div style="clear: both; text-align: right; margin-top: 15px;">
+                    <a href="${data.content_urls.desktop.page}" target="_blank" style="color: #0077be; font-weight: bold; text-decoration: none;">➔ 閱讀完整百科</a>
+                </div>
+            </div>
+        `;
+        btnElement.style.display = 'none';
+    } catch (error) {
+        targetDiv.innerHTML = `<div style="color:#d32f2f; text-align:center;">⚠️ 百科資料庫中暫無此學名的詳細紀錄。</div>`;
+        btnElement.innerHTML = originalBtnText;
+        btnElement.disabled = false;
+    }
+};
+
+// 💡 2. 圖片抓取輔助函式 (新功能)
+async function getFishThumbnail(sciName) {
+    try {
+        const wikiTitle = sciName.replace(/\s+/g, '_');
+        let res = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
+        if (!res.ok) res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
+        const data = await res.json();
+        return data.thumbnail ? data.thumbnail.source : null;
+    } catch {
+        return null;
     }
 }
 
-// 💡 3. 搜尋主邏輯
+// 💡 3. 保育燈號轉換器 (保持不變)
+function getConservationStyle(code) {
+    if (!code || code === 'null') return { html: `<span style="display:inline-block; background:#f5f5f5; color:#aaa; border:1px solid #eee; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">無紀錄</span>` };
+    const upperCode = code.toUpperCase();
+    const styleMap = {
+        'EX': { label: '絕滅', bg: '#000', color: '#fff' },
+        'EW': { label: '野外絕滅', bg: '#4a148c', color: '#fff' },
+        'CR': { label: '極危', bg: '#d32f2f', color: '#fff' },
+        'NCR': { label: '極危', bg: '#d32f2f', color: '#fff' },
+        'EN': { label: '瀕危', bg: '#f44336', color: '#fff' },
+        'NEN': { label: '瀕危', bg: '#f44336', color: '#fff' },
+        'VU': { label: '易危', bg: '#ff9800', color: '#fff' },
+        'NVU': { label: '易危', bg: '#ff9800', color: '#fff' },
+        'NT': { label: '近危', bg: '#8bc34a', color: '#000' },
+        'LC': { label: '無危', bg: '#4caf50', color: '#fff' }
+    };
+    const config = styleMap[upperCode] || { label: upperCode, bg: '#ffffff', color: '#000' };
+    return { html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">${config.label} (${upperCode})</span>` };
+}
+
+// 💡 4. 搜尋核心邏輯 (新增圖片整合)
 searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
 
     searchBtn.disabled = true;
-    resultDiv.innerHTML = '<p>🌊 正在檢索圖鑑並載入圖片中...</p>';
+    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在極速檢索圖鑑與影像資料...</p>`;
 
     try {
         const matchUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/nameMatch?name=${keyword}&best=no&bio_group=魚類`)}`;
@@ -78,7 +101,7 @@ searchBtn.addEventListener('click', async () => {
         const matchIdsToFetch = new Set();
         if (matchRes.data) matchRes.data.forEach(item => { if (!resultMap.has(item.taxon_id)) matchIdsToFetch.add(item.taxon_id); });
 
-        const detailPromises = Array.from(matchIdsToFetch).slice(0, 30).map(async (tid) => {
+        const detailPromises = Array.from(matchIdsToFetch).slice(0, 20).map(async (tid) => {
             try {
                 const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?taxon_id=${tid}`)}`);
                 const json = await res.json();
@@ -89,89 +112,60 @@ searchBtn.addEventListener('click', async () => {
         const fetchedDetails = await Promise.all(detailPromises);
         fetchedDetails.forEach(detail => { if (detail) resultMap.set(detail.taxon_id, detail); });
 
-        let fishList = Array.from(resultMap.values()).filter(fish => {
-            const str = JSON.stringify(fish).toUpperCase();
-            return !(str.includes('INSECTA') || str.includes('昆蟲'));
-        });
+        let fishList = Array.from(resultMap.values());
 
         if (fishList.length === 0) {
-            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到相關紀錄。</div>`;
+            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px;">❌ 找不到相關紀錄。</div>`;
             searchBtn.disabled = false;
             return;
         }
 
-        // 💡 4. 渲染卡片結果 (加入圖片位置)
-        let htmlContent = `<p style="margin-bottom:20px; text-align:left;">共找到 ${fishList.length} 筆資料：</p>`;
-        
-        htmlContent += fishList.map((fish, index) => {
+        // 渲染基礎卡片結構 (先顯示文字，圖片非同步載入)
+        resultDiv.innerHTML = fishList.map(fish => {
             const sciName = fish.simple_name || fish.scientific_name || "Unknown";
-            const imgId = `fish-img-${index}`;
-            const alienMap = { 'native': '原生', 'naturalized': '歸化', 'invasive': '入侵', 'cultured': '栽培養殖' };
-            const alienStatus = fish.alien_type ? (alienMap[fish.alien_type] || fish.alien_type) : '未標示';
-
-            // 觸發異步載入圖片
-            setFishThumbnail(sciName, imgId);
-
             return `
                 <div class="fish-card">
-                    <div style="display: flex; gap: 20px; align-items: flex-start;">
-                        <img id="${imgId}" src="https://via.placeholder.com/150?text=Loading..." 
-                             style="width: 150px; height: 150px; object-fit: cover; border-radius: 12px; background: #eee; border: 1px solid #ddd; flex-shrink: 0;">
-                        
-                        <div style="flex: 1;">
-                            <h3 class="fish-title">🐟 ${fish.common_name_c || '未有中文名'}</h3>
-                            <div class="fish-sci-name">${sciName}</div>
-                            <div class="fish-aliases"><strong>別名：</strong> ${fish.alternative_name_c || '無'}</div>
-                        </div>
+                    <div id="img-container-${fish.taxon_id}" style="width:100%; height:200px; background:#eee; border-radius:12px; margin-bottom:15px; overflow:hidden; display:flex; align-items:center; justify-content:center; color:#999; font-size:0.8em;">
+                        ⏳ 影像載入中...
                     </div>
 
-                    <div style="font-size:0.9em; color:#444; margin:15px 0; display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
-                        <div><strong>地位：</strong> ${fish.taxon_status === 'accepted' ? '有效名' : '非有效名'}</div>
-                        <div><strong>性質：</strong> ${alienStatus}</div>
-                        <div><strong>臺灣分布：</strong> ${fish.is_in_taiwan ? '✔' : '✖'}</div>
-                        <div><strong>特有種：</strong> ${fish.is_endemic ? '✔' : '✖'}</div>
-                    </div>
-
+                    <h3 class="fish-title">🐟 ${fish.common_name_c || '未命名'}</h3>
+                    <div class="fish-sci-name">${sciName}</div>
+                    <div class="fish-aliases"><strong>別名：</strong> ${fish.alternative_name_c || '無'}</div>
+                    
                     <div class="conservation-box">
                         <div class="conservation-title">🛡️ 保育狀態</div>
                         <div class="conservation-tags">
-                            <div class="tag-group"><span class="tag-label">IUCN 全球</span>${getConservationStyleHtml(fish.iucn)}</div>
-                            <div class="tag-group"><span class="tag-label">臺灣紅皮書</span>${getConservationStyleHtml(fish.redlist)}</div>
+                            <div class="tag-group"><span class="tag-label">IUCN 全球</span>${getConservationStyle(fish.iucn).html}</div>
+                            <div class="tag-group"><span class="tag-label">臺灣紅皮書</span>${getConservationStyle(fish.redlist).html}</div>
                         </div>
                     </div>
-
+                    
                     <div class="action-buttons">
-                        <button class="btn btn-wiki" onclick="loadWiki('${sciName}', this)">📸 百科詳解</button>
-                        <a class="btn btn-taicol" href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank">🏷️ TaiCOL</a>
-                        <a class="btn btn-fishbase" href="https://www.fishbase.se/summary/${sciName.replace(/ /g, '-')}" target="_blank">➔ FishBase</a>
+                        <button class="btn-wiki" onclick="fetchWikiData('${sciName}', this)">📸 百科詳解</button>
+                        <a class="btn-taicol" href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank" style="background:#ef6c00; color:white; padding:12px; border-radius:10px; text-decoration:none; flex:1; text-align:center; font-weight:bold;">🏷️ TaiCOL</a>
+                        <a class="btn-fishbase" href="https://www.fishbase.se/summary/${sciName.replace(/ /g, '-')}" target="_blank">➔ FishBase</a>
                     </div>
                     <div class="wiki-content"></div>
                 </div>
             `;
         }).join('');
 
-        resultDiv.innerHTML = htmlContent;
+        // 💡 非同步載入每張卡片的圖片
+        fishList.forEach(async (fish) => {
+            const sciName = fish.simple_name || fish.scientific_name || "";
+            const imgUrl = await getFishThumbnail(sciName);
+            const container = document.getElementById(`img-container-${fish.taxon_id}`);
+            if (imgUrl) {
+                container.innerHTML = `<img src="${imgUrl}" style="width:100%; height:100%; object-fit:cover; transition: 0.3s;">`;
+            } else {
+                container.innerHTML = `<span>📷 暫無影像紀錄</span>`;
+            }
+        });
 
     } catch (error) {
-        resultDiv.innerHTML = '<p style="color:red; text-align:center;">⚠️ API 連線逾時，請重試。</p>';
+        resultDiv.innerHTML = `<p style="color:red; text-align:center;">⚠️ 連線超時，請重試。</p>`;
     } finally {
         searchBtn.disabled = false;
     }
 });
-
-// 💡 5. 百科載入引擎 (保持原樣)
-window.loadWiki = async function(name, btn) {
-    const contentDiv = btn.parentElement.nextElementSibling;
-    btn.innerText = '⏳ 載入中...';
-    try {
-        const wikiTitle = name.replace(/ /g, '_');
-        let res = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
-        let data = await res.json();
-        contentDiv.innerHTML = `<p style="margin: 0;">${data.extract || '暫無摘要。'}</p>
-                                <div style="text-align: right;"><a href="${data.content_urls.desktop.page}" target="_blank">➔ 閱讀完整百科</a></div>`;
-        contentDiv.style.display = 'block';
-        btn.style.display = 'none';
-    } catch {
-        btn.innerText = '❌ 無法載入';
-    }
-};

@@ -43,7 +43,7 @@ window.fetchWikiData = async function(sciName, btnElement) {
     }
 };
 
-// 💡 2. 保育分級轉換
+// 💡 2. 保育分級轉換器
 function getStatusHtml(code) {
     if (!code || code === 'null') return '<span style="color:#aaa">無紀錄</span>';
     const upper = code.toUpperCase();
@@ -53,11 +53,17 @@ function getStatusHtml(code) {
         'NCR': '極危', 'NEN': '瀕危', 'NVU': '易危', 'NNT': '近危', 'NLC': '無危', 'DD': '數據缺乏'
     };
     const label = map[upper] || upper;
-    const color = (upper.includes('CR') || upper.includes('EN')) ? '#d32f2f' : (upper.includes('VU') ? '#ff9800' : '#4caf50');
-    return `<span style="background:${color}; color:white; padding:3px 10px; border-radius:15px; font-size:0.85em; font-weight:bold;">${label} (${upper})</span>`;
+    // 燈號顏色邏輯
+    let color = '#4caf50'; // 預設綠色 (LC/NLC)
+    if (upper.includes('CR') || upper.includes('EN')) color = '#d32f2f'; // 紅色
+    else if (upper.includes('VU')) color = '#ff9800'; // 橘色
+    else if (upper.includes('NT')) color = '#8bc34a'; // 淺綠
+    else if (upper.includes('EX') || upper.includes('EW') || upper.includes('RE')) color = '#000000'; // 黑色
+
+    return `<span style="background:${color}; color:white; padding:3px 10px; border-radius:15px; font-size:0.85em; font-weight:bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">${label} (${upper})</span>`;
 }
 
-// 💡 3. 主搜尋程式 (已更新 Rank 過濾邏輯)
+// 💡 3. 主搜尋程式
 searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
@@ -94,20 +100,18 @@ searchBtn.addEventListener('click', async () => {
         }));
         details.forEach(d => { if (d) resultMap.set(d.taxon_id, d); });
 
-        // 💡 核心過濾：只保留 Species 與 Subspecies，排除 Genus 等屬名
+        // 核心過濾：只留 Species 與 Subspecies，排除昆蟲
         let list = Array.from(resultMap.values()).filter(f => {
-            // 檢查階層
             const rank = f.rank ? f.rank.toLowerCase() : '';
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
             if (!validRanks.includes(rank)) return false;
 
-            // 排除昆蟲
             const str = JSON.stringify(f).toUpperCase();
             return !str.includes('INSECTA') && !str.includes('昆蟲');
         });
 
         if (list.length === 0) {
-            resultDiv.innerHTML = '<p style="text-align:center; color:red;">❌ 找不到具體的物種或亞種資料。</p>';
+            resultDiv.innerHTML = '<p style="text-align:center; color:red;">❌ 找不到具體的物種資料。</p>';
             searchBtn.disabled = false;
             return;
         }
@@ -116,7 +120,7 @@ searchBtn.addEventListener('click', async () => {
         const cardsHtml = await Promise.all(list.map(async (fish) => {
             const sciName = fish.scientific_name || fish.simple_name;
             
-            // 🖼️ 抓取不裁剪縮圖
+            // 🖼️ 抓取縮圖
             let imageUrl = '';
             try {
                 const wikiRes = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${sciName.replace(/\s+/g, '_')}`);
@@ -130,6 +134,9 @@ searchBtn.addEventListener('click', async () => {
 
             const alienMap = { 'native': '原生', 'naturalized': '歸化', 'invasive': '入侵', 'cultured': '養殖' };
             
+            // 🛡️ 華盛頓公約 (CITES) 標籤處理
+            const citesTag = fish.cites ? `<span style="display:inline-block; background:#1976d2; color:white; padding:3px 10px; border-radius:15px; font-size:0.85em; font-weight:bold;">附錄 ${fish.cites}</span>` : '<span style="color:#aaa">無紀錄</span>';
+
             return `
                 <div class="fish-card">
                     ${imgHtml}
@@ -144,10 +151,11 @@ searchBtn.addEventListener('click', async () => {
                             <div><strong>特有：</strong> ${fish.is_endemic ? '✔ 是' : '✖ 否'}</div>
                         </div>
                         <div class="conservation-box">
-                            <div class="conservation-title">🛡️ 保育狀態</div>
+                            <div class="conservation-title">🛡️ 保育狀態與公約</div>
                             <div class="conservation-tags">
-                                <div class="tag-group"><span class="tag-label">IUCN</span>${getStatusHtml(fish.iucn)}</div>
-                                <div class="tag-group"><span class="tag-label">紅皮書</span>${getStatusHtml(fish.redlist)}</div>
+                                <div class="tag-group"><span class="tag-label">IUCN 全球</span>${getStatusHtml(fish.iucn)}</div>
+                                <div class="tag-group"><span class="tag-label">臺灣紅皮書</span>${getStatusHtml(fish.redlist)}</div>
+                                <div class="tag-group"><span class="tag-label">華盛頓公約</span>${citesTag}</div>
                             </div>
                         </div>
                         <div class="action-buttons">

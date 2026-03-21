@@ -6,77 +6,78 @@ searchBtn.addEventListener('click', async () => {
     const name = fishInput.value.trim();
     if (!name) return;
 
-    resultDiv.innerHTML = `<p style="text-align:center; color:#0077be;">🔍 正在比對物種名錄...</p>`;
+    resultDiv.innerHTML = `<p style="text-align:center; color:#0077be;">🌊 依照官方規範查詢中...</p>`;
 
     try {
-        // --- 步驟一：使用 nameMatch 模糊比對 ---
+        // --- 1. 使用 nameMatch 取得 taxon_id 清單 ---
         const matchUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(name)}&best=no`;
         const proxyMatch = `https://corsproxy.io/?${encodeURIComponent(matchUrl)}`;
 
         const matchRes = await fetch(proxyMatch);
-        if (!matchRes.ok) throw new Error('連線失敗');
         const matchData = await matchRes.json();
         const candidates = matchData.data || [];
 
         if (candidates.length === 0) {
-            resultDiv.innerHTML = `❌ 找不到與「${name}」相關的紀錄。`;
+            resultDiv.innerHTML = `❌ 在名錄中找不到與「${name}」匹配的學名。`;
             return;
         }
 
-        resultDiv.innerHTML = `<p style="text-align:center; color:#0077be;">🧬 找到 ${candidates.length} 個匹配項，正在整理資料...</p>`;
-
-        // --- 步驟二：串聯詳細資料 (加入強大的失敗備援) ---
+        // --- 2. 依照說明書：使用 taxon?taxon_id={id} 取得詳細資料 ---
         const detailPromises = candidates.slice(0, 6).map(async (item) => {
             const tid = item.taxon_id;
-            const detailUrl = `https://api.taicol.tw/v2/taxon/${tid}`;
+            // 💡 依照妳提供的使用說明網址格式
+            const detailUrl = `https://api.taicol.tw/v2/taxon?taxon_id=${tid}`;
             const proxyDetail = `https://corsproxy.io/?${encodeURIComponent(detailUrl)}`;
             
             try {
                 const dRes = await fetch(proxyDetail);
-                if (!dRes.ok) throw new Error();
                 const dData = await dRes.json();
-                const info = dData.data ? (Array.isArray(dData.data) ? dData.data[0] : dData.data) : dData;
-                return { ...item, ...info, success: true };
+                // 官方回傳通常在 data 陣列裡
+                return dData.data ? dData.data[0] : dData;
             } catch (e) {
-                // 💡 備援：如果詳細資料抓失敗，依然回傳基本比對資料
-                return { ...item, success: false };
+                return null;
             }
         });
 
-        const fishList = await Promise.all(detailPromises);
+        const fishList = (await Promise.all(detailPromises)).filter(f => f !== null);
 
-        // --- 步驟三：渲染結果 ---
+        // --- 3. 依照回傳欄位說明進行渲染 ---
         resultDiv.innerHTML = fishList.map(fish => {
-            // 優先使用詳細資料的學名，失敗則用比對資料的學名
-            const fullSci = fish.scientific_name || fish.accepted_name || fish.matched_name || "Unknown";
-            const cleanSci = fullSci.split(' ').slice(0, 2).join(' ');
+            // 💡 官方回傳欄位對應
+            const commonName = fish.common_name_c || "未知俗名";
+            const otherNames = fish.alternative_name_c || "";
+            const simpleName = fish.simple_name || ""; // 簡單學名 (無作者)
+            const fullName = fish.formatted_name || fish.simple_name || "Unknown";
             
-            // 判斷科別顯示
-            const familyInfo = fish.success 
-                ? `${fish.family_c || ''} (${fish.family || '未分類'})`
-                : `<span style="color:#999;">(詳細科別載入失敗)</span>`;
+            // 💡 使用官方 simple_name 對接 FishBase，最準確！
+            const fishBaseUrl = `https://www.fishbase.se/summary/${simpleName.replace(/\s+/g, '-')}`;
 
             return `
-                <div style="background: white; padding: 20px; border-radius: 15px; border: 2px solid #0077be; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <div style="background: white; padding: 20px; border-radius: 15px; border: 2px solid #0077be; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div style="flex: 1;">
-                            <h3 style="margin: 0 0 10px 0; color: #0077be;">🐟 ${fish.common_name_c || name}</h3>
-                            <p style="margin: 5px 0; font-size: 0.95em;"><strong>科別：</strong> ${familyInfo}</p>
-                            <p style="margin: 5px 0; font-size: 0.9em; color: #d32f2f;"><strong>學名：</strong> <i>${fullSci}</i></p>
-                            ${fish.common_name_e ? `<p style="margin: 5px 0; font-size: 0.8em; color: #666;">英文名：${fish.common_name_e}</p>` : ''}
+                            <h3 style="margin: 0 0 10px 0; color: #0077be;">🐟 ${commonName}</h3>
+                            <p style="margin: 5px 0; font-size: 0.9em; color: #d32f2f;"><strong>學名：</strong> <i>${fullName}</i></p>
+                            ${otherNames ? `<p style="margin: 5px 0; font-size: 0.85em; color: #666;"><strong>別名：</strong> ${otherNames}</p>` : ''}
+                            <p style="margin: 5px 0; font-size: 0.85em; color: #888;">
+                                <strong>分類階層：</strong> ${fish.rank || 'Species'} | 
+                                <strong>界名：</strong> ${fish.kingdom || 'Animalia'}
+                            </p>
                         </div>
-                        <a href="https://www.fishbase.se/summary/${cleanSci.replace(/\s+/g, '-')}" 
-                           target="_blank" 
+                        <a href="${fishBaseUrl}" target="_blank" 
                            style="background: #0077be; color: white; padding: 10px 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.9em; white-space: nowrap; margin-left: 10px;">
                            FishBase
                         </a>
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 0.75em; color: #bbb;">
+                        物種編號：${fish.taxon_id} | 更新日期：${fish.updated_at || 'N/A'}
                     </div>
                 </div>
             `;
         }).join('');
 
     } catch (error) {
-        console.error("搜尋崩潰:", error);
-        resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px;">⚠️ 伺服器繁忙，請稍後再試一次。</div>`;
+        console.error("搜尋錯誤:", error);
+        resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px;">⚠️ API 連線異常，請稍後再試。</div>`;
     }
 });

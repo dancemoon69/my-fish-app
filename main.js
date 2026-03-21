@@ -64,7 +64,7 @@ function getConservationStyle(code) {
     return { html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">${config.label} (${upperCode})</span>` };
 }
 
-// 💡 3. 穩定版核心搜尋邏輯 (退回使用 corsproxy)
+// 💡 3. 穩定版核心搜尋邏輯
 searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
@@ -73,7 +73,6 @@ searchBtn.addEventListener('click', async () => {
     resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在連接名錄資料庫進行檢索...</p>`;
 
     try {
-        // 使用確定能跑的 corsproxy.io
         const matchUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/nameMatch?name=${keyword}&best=no&bio_group=魚類`)}`;
         const commonUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?common_name=${keyword}`)}`;
         const groupUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?taxon_group=${keyword}`)}`;
@@ -86,7 +85,6 @@ searchBtn.addEventListener('click', async () => {
 
         const resultMap = new Map();
         
-        // 整理直接抓到的完整資料
         const addTaxonData = (dataList) => {
             if (dataList) {
                 dataList.forEach(item => { 
@@ -97,7 +95,6 @@ searchBtn.addEventListener('click', async () => {
         addTaxonData(commonRes.data);
         addTaxonData(groupRes.data);
 
-        // 整理需要反查詳細資料的 ID (使用 Set 避免重複消耗額度)
         const matchIdsToFetch = new Set();
         if (matchRes.data) {
             matchRes.data.forEach(item => { 
@@ -105,7 +102,6 @@ searchBtn.addEventListener('click', async () => {
             });
         }
 
-        // 批量抓取詳細資料 (上限 30 筆)
         const detailPromises = Array.from(matchIdsToFetch).slice(0, 30).map(async (tid) => {
             try {
                 const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://api.taicol.tw/v2/taxon?taxon_id=${tid}`)}`);
@@ -121,21 +117,20 @@ searchBtn.addEventListener('click', async () => {
             }
         });
 
-        // 💡 乾淨的過濾器：只保留種/亞種，且「唯一排除」昆蟲綱
+        // 💡 終極過濾器：只排除昆蟲綱 (Insecta)，其餘全留
         let fishList = Array.from(resultMap.values()).filter(fish => {
-            // 1. 容許 種(Species) 與 亞種(Subspecies)，讓櫻花鉤吻鮭能正常出現
+            // 1. 保留物種與亞種
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
             const currentRank = fish.rank ? fish.rank.toLowerCase() : '';
             if (currentRank && !validRanks.includes(currentRank)) return false;
 
-            // 2. 唯一排除名單：絕對排除昆蟲綱 (轉換為大寫/防呆比對)
-            const classEn = fish.class ? fish.class.toUpperCase() : '';
-            const classZh = fish.class_c || '';
-            if (classEn.includes('INSECTA') || classZh.includes('昆蟲')) {
-                return false;
+            // 2. 絕對防蟲防線：無視 API 欄位缺漏，直接掃描整包資料字串
+            const fishDataStr = JSON.stringify(fish).toUpperCase();
+            if (fishDataStr.includes('INSECTA') || fishDataStr.includes('昆蟲')) {
+                return false; // 只要資料裡混有昆蟲兩字，立刻踢除！
             }
 
-            // 其他通通放行！
+            // 只要不是昆蟲，通通放行！
             return true;
         });
 
@@ -201,6 +196,6 @@ searchBtn.addEventListener('click', async () => {
         console.error("❌ 搜尋錯誤:", error);
         resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px; background:#fff3f3; border-radius:12px;">⚠️ API 連線逾時，請檢查網路或稍後再試。</div>`;
     } finally {
-        searchBtn.disabled = false; // 恢復按鈕狀態
+        searchBtn.disabled = false;
     }
 });

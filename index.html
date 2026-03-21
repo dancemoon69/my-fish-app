@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>臺灣水生動物圖鑑</title>
+    <title>認識臺灣水生動植物圖鑑</title>
     <style>
         :root {
             --primary-blue: #0077be;
@@ -26,19 +26,27 @@
             color: var(--text-main); 
         }
         .container { max-width: 900px; margin: 0 auto; }
+        
+        /* 🚀 首頁文字潤飾區 */
         .header { text-align: center; margin-bottom: 30px; }
         .header h1 { color: var(--primary-blue); font-size: 2.2em; margin-bottom: 10px; }
+        .header .intro-text { font-size: 1em; color: var(--text-muted); font-style: italic; margin-bottom: 15px; }
         .header .warning { 
-            color: var(--danger-red); 
-            font-weight: bold; 
-            font-size: 0.85em; 
-            background: #fff3f3; 
-            padding: 8px 20px; 
-            border-radius: 20px; 
+            color: #555; 
+            font-size: 0.9em; 
+            background: #fff; 
+            padding: 20px; 
+            border-radius: 16px; 
             display: inline-block; 
             margin-top: 10px; 
-            border: 1px solid #ffcdd2;
+            border: 1px solid #e0e0e0;
+            line-height: 1.8;
+            text-align: left;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            max-width: 700px;
         }
+        .warning b { color: var(--primary-blue); }
+
         .search-box { display: flex; gap: 12px; margin-bottom: 30px; }
         #fishName { 
             flex: 1; 
@@ -187,13 +195,19 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🐟 臺灣水生動物圖鑑</h1>
-            <p>輸入俗名、學名或科別進行檢索</p>
-            <div class="warning">💡 註明：如果找到不是水生動物是正常的，因爲資料排除不了ＸＤＤＤＤ</div>
+            <h1>🐟 認識臺灣水生動植物圖鑑</h1>
+            <p class="intro-text">—— 撥開混沌的深淵，搜尋潛藏於秘典中的幻獸學名 ——</p>
+            <div class="warning">
+                📜 <b>契約條款：</b> 本系統之卷宗同步自 <b>臺灣物種名錄 (TaiCOL)</b> 秘典。
+                然而，在真理的邊界，海與陸的界線早已模糊，系統尚未覺醒辨別深淵禁忌與陸上走獸的能力。
+                <br><br>
+                若欲窺探跨越國境的國際情報——有鱗之王請尋求 <b>FishBase</b> 的啟示；其餘眾生則向 <b>SeaLifeBase</b> 祈禱。
+                此乃孤高觀測者的自助之路。若見非水之物，莫驚，那僅是現實與虛幻交織的殘響。
+            </div>
         </div>
         <div class="search-box">
-            <input type="text" id="fishName" placeholder="搜尋關鍵字後按 Enter..." autocomplete="off">
-            <button id="searchBtn">🔍 搜尋</button>
+            <input type="text" id="fishName" placeholder="輸入關鍵字，啟動檢索陣..." autocomplete="off">
+            <button id="searchBtn">🔍 啟動</button>
         </div>
         <div id="result"></div>
         <div class="data-credits">

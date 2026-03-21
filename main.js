@@ -64,7 +64,7 @@ function getConservationStyle(code) {
     return { html: `<span style="display:inline-block; background:${config.bg}; color:${config.color}; border:1px solid ${config.border}; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:bold;">${config.label} (${upperCode})</span>` };
 }
 
-// 💡 3. 穩定版核心搜尋邏輯 (退回使用 corsproxy)
+// 💡 3. 核心搜尋邏輯 (穩定連線 + 強力除蟲過濾)
 searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
@@ -121,18 +121,28 @@ searchBtn.addEventListener('click', async () => {
             }
         });
 
-        // 💡 穩定版過濾器
+        // 💡 強化版防蟲過濾器
         let fishList = Array.from(resultMap.values()).filter(fish => {
-            // 1. 容許 種(Species) 與 亞種(Subspecies)，讓櫻花鉤吻鮭出現
+            // 🚨 1. 優先排除昆蟲綱與其他非魚類 (中英文學名雙重攔截)
+            const classStr = (fish.class_c || '') + (fish.class || '');
+            if (classStr.includes('昆蟲') || classStr.includes('Insecta')) return false;
+            
+            const nonFishClasses = ['鳥', '哺乳', '爬蟲', '兩棲', '蛛形', '軟甲', '腹足', '雙殼', '頭足'];
+            if (nonFishClasses.some(c => classStr.includes(c))) return false;
+
+            // 🚨 2. 棲地防線：純陸生絕對不是魚 (殺死漏網之蟲)
+            const isStrictlyTerrestrial = fish.is_terrestrial && !fish.is_freshwater && !fish.is_marine && !fish.is_brackish;
+            if (isStrictlyTerrestrial) return false;
+
+            // 3. 容許 種(Species) 與 亞種(Subspecies)，讓櫻花鉤吻鮭出現
             const validRanks = ['species', 'subspecies', 'variety', 'form'];
             const currentRank = fish.rank ? fish.rank.toLowerCase() : '';
             if (currentRank && !validRanks.includes(currentRank)) return false;
 
-            // 2. 排除昆蟲與鳥類 (根據你回報的有昆蟲混入)
-            if (fish.class_c) {
-                const nonFishClasses = ['鳥綱', '哺乳綱', '爬蟲綱', '兩棲綱', '昆蟲綱', '蛛形綱', '軟甲綱', '腹足綱', '雙殼綱', '頭足綱'];
-                if (nonFishClasses.some(c => fish.class_c.includes(c))) return false;
-            }
+            // 4. 俗名防呆排除 (名字有魚但不是魚的生物)
+            const fakeFishes = ['鯨', '鱷', '墨魚', '魷魚', '鮑魚', '章魚', '甲魚', '海豚', '儒艮'];
+            const nameStr = (fish.family_c || '') + (fish.common_name_c || '');
+            if (fakeFishes.some(w => nameStr.includes(w))) return false;
 
             return true;
         });

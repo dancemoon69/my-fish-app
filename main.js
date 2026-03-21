@@ -6,56 +6,61 @@ searchBtn.addEventListener('click', async () => {
     const name = fishInput.value.trim();
     if (!name) return;
 
-    resultDiv.innerHTML = `<p style="color: #0077be;">正在海洋中廣域搜尋「${name}」... 🔍</p>`;
+    resultDiv.innerHTML = `<p style="color: #0077be;">正在比對「${name}」的官方學名... 🔍</p>`;
 
-    // 💡 關鍵修正：使用 q= 進行全文檢索，這是對付俗名最有效的方法
-    // 加上 bio_group=魚類 確保不會搜到奇怪的植物
-    const targetUrl = `https://api.taicol.tw/v2/taxon?q=${encodeURIComponent(name)}&bio_group=魚類&limit=1`;
+    // 💡 只使用 nameMatch API，不限制類群，讓模糊比對發揮最大效用
+    const targetUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(name)}&best=yes`;
+    
+    // 使用 corsproxy.io (最乾淨的中轉站，不會有 atob 報錯)
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
     try {
         const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error(`連線異常 (${response.status})`);
+        if (!response.ok) throw new Error('中轉站回應異常');
 
         const data = await response.json();
-        console.log("TaiCOL v2 搜尋回傳：", data);
+        console.log("TaiCOL 比對結果:", data);
 
         if (data.data && data.data.length > 0) {
-            const fish = data.data[0];
+            const match = data.data[0];
 
-            // 💡 依照 v2 官方欄位對接
-            const chineseName = fish.common_name_c || fish.common_name || name;
-            const sciNameFull = fish.scientific_name || "Unknown";
-            const familyC = fish.family_c || "";
-            const familyL = fish.family || "";
-
-            // 格式化學名 (取前兩個單字)
+            // 💡 取得「正式學名 (accepted_name)」或「比對到的學名 (matched_name)」
+            const sciNameFull = match.accepted_name || match.matched_name || "Unknown";
+            
+            // 格式化學名：只取前兩個單字 (例如: Coryphaena hippurus)
+            // 避免後面帶有作者名或括號影響 FishBase 搜尋
             const cleanSci = sciNameFull.split(' ').slice(0, 2).join(' ');
 
             resultDiv.innerHTML = `
                 <div style="background: white; padding: 20px; border-radius: 15px; border: 2px solid #0077be; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                    <h2 style="color: #0077be; margin-top:0;">🐟 ${chineseName}</h2>
-                    <p style="font-size: 1.1em;"><strong>標準學名：</strong> <i style="color: #d32f2f;">${cleanSci}</i></p>
-                    <p><strong>分類科別：</strong> ${familyC} (${familyL})</p>
-                    <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+                    <h2 style="color: #0077be; margin-top:0;">🐟 ${name}</h2>
+                    <p style="font-size: 1.1em; margin-bottom: 20px;">
+                        <strong>匹配學名：</strong> <br>
+                        <i style="color: #d32f2f; font-size: 1.2em;">${cleanSci}</i>
+                    </p>
+                    
                     <a href="https://www.fishbase.se/summary/${cleanSci.replace(/\s+/g, '-')}" 
                        target="_blank" 
-                       style="display: block; background: #0077be; color: white; text-align: center; padding: 12px; text-decoration: none; border-radius: 8px; font-weight: bold;">
-                       ➔ 查看 FishBase 詳細數據
+                       style="display: block; background: #0077be; color: white; text-align: center; padding: 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 1.1em;">
+                       ➔ 前往 FishBase 全球圖鑑
                     </a>
-                    <p style="font-size: 0.75em; color: #999; margin-top: 10px; text-align: center;">資料來源：TaiCOL v2 全文檢索</p>
+                    
+                    <p style="font-size: 0.7em; color: #999; margin-top: 15px; text-align: center;">
+                        比對結果：${match.matched_name_usage || '正式名稱'}
+                    </p>
                 </div>
             `;
         } else {
-            resultDiv.innerHTML = `
-                <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                    ❌ 找不到「${name}」。<br>
-                    <small style="color: #888;">建議嘗試：鬼頭刀、虱目魚、白帶魚</small>
-                </div>
-            `;
+            resultDiv.innerHTML = `❌ 找不到與「${name}」匹配的學名，請嘗試更精確的俗名。`;
         }
     } catch (error) {
-        console.error("錯誤:", error);
-        resultDiv.innerHTML = `<div style="color:red;">⚠️ 搜尋中斷，請稍後再試。</div>`;
+        console.error("連線錯誤:", error);
+        resultDiv.innerHTML = `
+            <div style="color: #d32f2f; padding: 15px; border: 1px solid #ffcdd2; background: #fff3f3; border-radius: 10px;">
+                ⚠️ <strong>比對失敗</strong><br>
+                原因：${error.message}<br>
+                <small>請確認網路連線，或稍後再試。</small>
+            </div>
+        `;
     }
 });

@@ -15,11 +15,9 @@ window.fetchWikiData = async function(sciName, btnElement) {
     const slug = sciName.replace(/\s+/g, '_');
     
     try {
-        // 先試中文 zh
         let res = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${slug}`);
         let langLabel = "中文版";
         
-        // 若中文找不到 (404)，改試英文 en
         if (!res.ok) {
             res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
             langLabel = "英文版";
@@ -159,19 +157,14 @@ searchBtn.addEventListener('click', async () => {
             `;
         }).join('');
 
-        // 💡 4. 雙語異步載入圖片 (zh -> en)
         list.forEach(async (fish) => {
             const sciName = fish.scientific_name || fish.simple_name;
             const imgDiv = document.getElementById(`img-${fish.taxon_id}`);
             const slug = sciName.replace(/\s+/g, '_');
             
             try {
-                // 先嘗試中文
                 let wikiRes = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${slug}`);
-                if (!wikiRes.ok) {
-                    // 若中文沒圖，改抓英文
-                    wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
-                }
+                if (!wikiRes.ok) wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
                 
                 const data = await wikiRes.json();
                 if (data.thumbnail) {

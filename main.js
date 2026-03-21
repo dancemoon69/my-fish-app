@@ -9,6 +9,7 @@ window.fetchWikiData = async function(sciName, btnElement) {
     
     btnElement.innerHTML = '⏳ 載入中...';
     btnElement.disabled = true;
+    btnElement.style.opacity = '0.7';
     targetDiv.style.display = 'block';
     targetDiv.innerHTML = '<div style="text-align:center; color:#666;">正在載入百科文獻與影像...</div>';
 
@@ -27,7 +28,7 @@ window.fetchWikiData = async function(sciName, btnElement) {
         }
 
         targetDiv.innerHTML = `
-            <div style="text-align: justify; overflow: hidden;">
+            <div style="text-align: justify; overflow: hidden; padding-top:10px;">
                 ${imgHtml}
                 <p style="margin: 0 0 8px 0; color: #2e7d32; font-weight:bold;">📖 百科摘要 (${data.title})：</p>
                 <p style="margin: 0;">${data.extract || '該物種目前暫無詳細文字描述。'}</p>
@@ -42,6 +43,7 @@ window.fetchWikiData = async function(sciName, btnElement) {
         targetDiv.innerHTML = `<div style="color:#d32f2f; text-align:center;">⚠️ 百科資料庫中暫無此學名的直接紀錄。</div>`;
         btnElement.innerHTML = originalBtnText;
         btnElement.disabled = false;
+        btnElement.style.opacity = '1';
     }
 };
 
@@ -73,11 +75,9 @@ searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
 
-    // 清空上次結果並顯示讀取中
-    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在過濾名錄，確保僅顯示魚類資料...</p>`;
+    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在深度檢索並過濾非魚類資料...</p>`;
 
     try {
-        // --- 發動三路並行檢索 ---
         const matchUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(keyword)}&best=no&bio_group=魚類`;
         const commonUrl = `https://api.taicol.tw/v2/taxon?common_name=${encodeURIComponent(keyword)}`;
         const groupUrl = `https://api.taicol.tw/v2/taxon?taxon_group=${encodeURIComponent(keyword)}`;
@@ -89,7 +89,7 @@ searchBtn.addEventListener('click', async () => {
         ]);
 
         const resultMap = new Map();
-        const confirmedFishIds = new Set(); // 記錄從 bio_group=魚類 抓到的安全 ID
+        const confirmedFishIds = new Set(); // 記錄已經確認是魚類的 ID
 
         const addTaxonData = (dataList) => {
             if (dataList) dataList.forEach(item => { if (item.kingdom === 'Animalia') resultMap.set(item.taxon_id, item); });
@@ -97,7 +97,6 @@ searchBtn.addEventListener('click', async () => {
         addTaxonData(commonRes.data);
         addTaxonData(groupRes.data);
 
-        // 整理需要反查詳細資料的 ID
         const matchIdsToFetch = [];
         if (matchRes.data) {
             matchRes.data.forEach(item => { 
@@ -106,7 +105,6 @@ searchBtn.addEventListener('click', async () => {
             });
         }
 
-        // 反查詳細資料 (取前 15 筆)
         const detailPromises = matchIdsToFetch.slice(0, 15).map(async (tid) => {
             const detailUrl = `https://api.taicol.tw/v2/taxon?taxon_id=${tid}`;
             try {
@@ -121,20 +119,23 @@ searchBtn.addEventListener('click', async () => {
             if (detail && detail.kingdom === 'Animalia') resultMap.set(detail.taxon_id, detail);
         });
 
-        // 💡 核心過濾器：階層放寬 (容許亞種)，並改用「黑名單」排除法避免誤殺真實魚類
+        // 💡 核心過濾器：暴力字串掃描 + 棲地絕對過濾
         let fishList = Array.from(resultMap.values()).filter(fish => {
-            // 條件 1：必須是動物界，且階層包含種 (Species) 或亞種 (Subspecies)
+            // 1. 基本身分確認
             const validRanks = ['Species', 'Subspecies', 'Variety'];
             if (!validRanks.includes(fish.rank)) return false;
             if (fish.kingdom !== 'Animalia') return false;
 
-            // 條件 2：黑名單排除法 (只要綱名出現非魚類就踢掉)
-            if (fish.class_c) {
-                const nonFishClasses = ['鳥綱', '哺乳綱', '爬蟲綱', '兩棲綱', '昆蟲綱', '蛛形綱', '軟甲綱', '腹足綱', '雙殼綱', '頭足綱'];
-                if (nonFishClasses.some(c => fish.class_c.includes(c))) return false;
-            }
+            // 2. 棲地絕對防線：如果是純陸生（沒有淡/海水屬性），絕對是鳥、獸、蟲，直接踢掉！
+            const isStrictlyTerrestrial = fish.is_terrestrial && !fish.is_freshwater && !fish.is_marine && !fish.is_brackish;
+            if (isStrictlyTerrestrial) return false;
 
-            // 條件 3：俗名防呆排除 (名字有魚但不是魚的生物)
+            // 3. 暴力字串掃描黑名單：把整包 JSON 轉成大寫字串，只要掃到昆蟲/節肢等字眼就殺
+            const fishStr = JSON.stringify(fish).toUpperCase();
+            const bugKeywords = ['昆蟲', 'INSECTA', '節肢動物', 'ARTHROPODA', '軟體動物', 'MOLLUSCA', '鳥綱', 'AVES', '哺乳', 'MAMMALIA', '爬蟲', 'REPTILIA', '兩棲', 'AMPHIBIA'];
+            if (bugKeywords.some(kw => fishStr.includes(kw))) return false;
+
+            // 4. 俗名防呆排除 (名字有魚但不是魚的生物)
             const fakeFishes = ['鯨', '鱷', '墨魚', '魷魚', '鮑魚', '章魚', '甲魚', '海豚', '儒艮'];
             const nameStr = (fish.family_c || '') + (fish.common_name_c || '');
             if (fakeFishes.some(w => nameStr.includes(w))) return false;
@@ -143,11 +144,11 @@ searchBtn.addEventListener('click', async () => {
         });
 
         if (fishList.length === 0) {
-            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的「魚類」紀錄。<br><small style="color:#888;">請確認輸入的名稱是否正確，或嘗試其他俗名。</small></div>`;
+            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的「魚類」紀錄。</div>`;
             return;
         }
 
-        // 💡 3. 渲染卡片結果 (使用對接 index.html 的 CSS Class)
+        // 💡 3. 渲染卡片結果
         let htmlContent = `<p style="margin-bottom:20px; color:var(--text-muted); font-weight:bold;">共過濾出 ${fishList.length} 筆魚類資料：</p>`;
         
         htmlContent += fishList.map(fish => {
@@ -194,16 +195,23 @@ searchBtn.addEventListener('click', async () => {
                         </div>
                     </div>
 
-                    <div class="action-buttons">
-                        <button class="btn-wiki" onclick="fetchWikiData('${sciName}', this)">📸 百科圖文</button>
-                        <a class="btn-fishbase" href="https://www.fishbase.se/summary/${sciName.replace(/\s+/g, '-')}" target="_blank">➔ 前往 FishBase</a>
+                    <div class="action-buttons" style="display: flex; gap: 10px; border-top: 1px dashed #e0e0e0; padding-top: 20px; flex-wrap: wrap;">
+                        <button class="btn-wiki" onclick="fetchWikiData('${sciName}', this)" style="flex: 1; min-width: 120px; padding: 12px; border-radius: 8px; font-weight: bold; background: var(--primary-blue); color: white; border: none; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
+                            📸 百科圖文
+                        </button>
+                        <a href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank" style="flex: 1; min-width: 120px; padding: 12px; border-radius: 8px; font-weight: bold; background: #ef6c00; color: white; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
+                            🏷️ TaiCOL
+                        </a>
+                        <a href="https://www.fishbase.se/summary/${sciName.replace(/\s+/g, '-')}" target="_blank" style="flex: 1; min-width: 120px; padding: 12px; border-radius: 8px; font-weight: bold; background: var(--accent-green); color: white; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
+                            ➔ FishBase
+                        </a>
                     </div>
+                    
                     <div class="wiki-content"></div>
                 </div>
             `;
         }).join('');
 
-        // 加入資料來源版權宣告
         htmlContent += `
             <div class="data-credits">
                 資料來源：<a href="https://taicol.tw/" target="_blank">臺灣物種名錄 (TaiCOL)</a> | 

@@ -2,7 +2,7 @@ const searchBtn = document.querySelector('#searchBtn');
 const fishInput = document.querySelector('#fishName');
 const resultDiv = document.querySelector('#result');
 
-// 💡 1. 維基百科 API 萃取引擎 (保持不變)
+// 💡 1. 維基百科 API 萃取引擎
 window.fetchWikiData = async function(sciName, btnElement) {
     const targetDiv = btnElement.parentElement.nextElementSibling;
     const originalBtnText = btnElement.innerHTML;
@@ -47,7 +47,7 @@ window.fetchWikiData = async function(sciName, btnElement) {
     }
 };
 
-// 💡 保育等級燈號轉換器 (保持不變)
+// 💡 保育等級燈號轉換器
 function getConservationStyle(code) {
     if (!code || code === 'null') return { label: '無紀錄', bg: '#f5f5f5', color: '#aaa', border: '#eee' };
     const upperCode = code.toUpperCase();
@@ -75,7 +75,7 @@ searchBtn.addEventListener('click', async () => {
     const keyword = fishInput.value.trim();
     if (!keyword) return;
 
-    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在擴大檢索範圍並過濾資料...</p>`;
+    resultDiv.innerHTML = `<p style="text-align:center; color:var(--primary-blue); font-weight:bold;">🌊 正在擴展搜尋網並排除重複紀錄...</p>`;
 
     try {
         const matchUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(keyword)}&best=no&bio_group=魚類`;
@@ -89,12 +89,10 @@ searchBtn.addEventListener('click', async () => {
         ]);
 
         const resultMap = new Map();
-        const confirmedFishIds = new Set(); 
 
         const addTaxonData = (dataList) => {
             if (dataList) {
                 dataList.forEach(item => { 
-                    // 💡 改變：容許 kingdom 為空值 (應付 API 缺漏)，只要不是明確寫著別的界就好
                     if (!item.kingdom || item.kingdom === 'Animalia') {
                         resultMap.set(item.taxon_id, item); 
                     }
@@ -104,16 +102,18 @@ searchBtn.addEventListener('click', async () => {
         addTaxonData(commonRes.data);
         addTaxonData(groupRes.data);
 
-        const matchIdsToFetch = [];
+        // 💡 關鍵修復：使用 Set() 來確保 ID 絕對不重複
+        const matchIdsToFetch = new Set();
         if (matchRes.data) {
             matchRes.data.forEach(item => { 
-                confirmedFishIds.add(item.taxon_id); 
-                if (!resultMap.has(item.taxon_id)) matchIdsToFetch.push(item.taxon_id); 
+                if (!resultMap.has(item.taxon_id)) {
+                    matchIdsToFetch.add(item.taxon_id); 
+                }
             });
         }
 
-        // 💡 改變：將反查上限從 15 提高到 30，避免熱門關鍵字結果被腰斬
-        const detailPromises = matchIdsToFetch.slice(0, 30).map(async (tid) => {
+        // 把乾淨、不重複的 ID 拿去調閱詳細資料 (確保 30 個名額都是不同物種)
+        const detailPromises = Array.from(matchIdsToFetch).slice(0, 30).map(async (tid) => {
             const detailUrl = `https://api.taicol.tw/v2/taxon?taxon_id=${tid}`;
             try {
                 const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(detailUrl)}`);
@@ -129,23 +129,27 @@ searchBtn.addEventListener('click', async () => {
             }
         });
 
-        // 💡 核心過濾器：處理 API 空值防呆
+        // 💡 核心過濾器：科學化防蟲，不濫殺無辜
         let fishList = Array.from(resultMap.values()).filter(fish => {
-            // 1. 基本身分確認 (增加 Form 型態，並容許 API rank 空值由後續把關)
-            const validRanks = ['Species', 'Subspecies', 'Variety', 'Form'];
-            if (fish.rank && !validRanks.includes(fish.rank)) return false;
-            if (fish.kingdom && fish.kingdom !== 'Animalia') return false;
+            // 1. 容許「種」與「亞種」
+            const validRanks = ['species', 'subspecies', 'variety', 'form'];
+            const currentRank = fish.rank ? fish.rank.toLowerCase() : '';
+            if (currentRank && !validRanks.includes(currentRank)) return false;
 
-            // 2. 棲地絕對防線
-            const isStrictlyTerrestrial = fish.is_terrestrial && !fish.is_freshwater && !fish.is_marine && !fish.is_brackish;
-            if (isStrictlyTerrestrial) return false;
+            // 2. 利用綱 (Class) 與門 (Phylum) 精準殺蟲殺鳥
+            const classStr = (fish.class_c || '') + (fish.class || '');
+            const phylumStr = (fish.phylum_c || '') + (fish.phylum || '');
+            
+            const nonFishClasses = ['鳥', '哺乳', '爬蟲', '兩棲', '昆蟲', '蛛形', '軟甲', '腹足', '雙殼', '頭足', 'Aves', 'Mammalia', 'Reptilia', 'Amphibia', 'Insecta'];
+            if (nonFishClasses.some(c => classStr.includes(c))) return false;
+            
+            const nonFishPhylums = ['節肢動物', '軟體動物', '環節動物', '棘皮動物', '刺絲胞', 'Arthropoda', 'Mollusca'];
+            if (nonFishPhylums.some(p => phylumStr.includes(p))) return false;
 
-            // 3. 暴力字串掃描黑名單
-            const fishStr = JSON.stringify(fish).toUpperCase();
-            const bugKeywords = ['昆蟲', 'INSECTA', '節肢動物', 'ARTHROPODA', '軟體動物', 'MOLLUSCA', '鳥綱', 'AVES', '哺乳', 'MAMMALIA', '爬蟲', 'REPTILIA', '兩棲', 'AMPHIBIA'];
-            if (bugKeywords.some(kw => fishStr.includes(kw))) return false;
+            // 3. 棲地絕對防線 (純陸生直接出局)
+            if (fish.is_terrestrial && !fish.is_freshwater && !fish.is_marine && !fish.is_brackish) return false;
 
-            // 4. 俗名防呆排除
+            // 4. 俗名防呆排除 (名字有魚但不是魚的生物)
             const fakeFishes = ['鯨', '鱷', '墨魚', '魷魚', '鮑魚', '章魚', '甲魚', '海豚', '儒艮'];
             const nameStr = (fish.family_c || '') + (fish.common_name_c || '');
             if (fakeFishes.some(w => nameStr.includes(w))) return false;
@@ -154,7 +158,7 @@ searchBtn.addEventListener('click', async () => {
         });
 
         if (fishList.length === 0) {
-            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的「魚類」紀錄。</div>`;
+            resultDiv.innerHTML = `<div style="padding:20px; text-align:center; background:#fff3f3; color:var(--danger-red); border-radius:12px; border: 1px solid #ffcdd2;">❌ 找不到與「${keyword}」相關的「魚類」紀錄。<br><small style="color:#888;">請確認輸入的名稱是否正確，或嘗試其他俗名。</small></div>`;
             return;
         }
 
@@ -189,53 +193,4 @@ searchBtn.addEventListener('click', async () => {
                         <strong>別名：</strong> ${fish.alternative_name_c || '無'}
                     </div>
 
-                    <div class="data-grid">
-                        <div class="data-item"><strong>地位：</strong> ${fish.taxon_status === 'accepted' ? '有效名' : '非有效名'}</div>
-                        <div class="data-item"><strong>棲地：</strong> <span style="color:var(--primary-blue); font-weight:500;">${habitatStr}</span></div>
-                        <div class="data-item"><strong>分布：</strong> ${inTaiwan} 臺灣 | ${isEndemic} 特有</div>
-                        <div class="data-item"><strong>性質：</strong> ${alienStatus}</div>
-                    </div>
-
-                    <div class="conservation-box">
-                        <div class="conservation-title">🛡️ 保育與受威脅狀態</div>
-                        <div class="conservation-tags">
-                            <div class="tag-group"><span class="tag-label">IUCN 紅皮書</span>${iucnTag}</div>
-                            <div class="tag-group"><span class="tag-label">臺灣紅皮書</span>${redlistTag}</div>
-                            <div class="tag-group"><span class="tag-label">華盛頓公約</span>${citesTag}</div>
-                        </div>
-                    </div>
-
-                    <div class="action-buttons" style="display: flex; gap: 10px; border-top: 1px dashed #e0e0e0; padding-top: 20px; flex-wrap: wrap;">
-                        <button class="btn-wiki" onclick="fetchWikiData('${sciName}', this)" style="flex: 1; min-width: 120px; padding: 12px; border-radius: 8px; font-weight: bold; background: var(--primary-blue); color: white; border: none; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
-                            📸 百科圖文
-                        </button>
-                        <a href="https://taicol.tw/taxon/${fish.taxon_id}" target="_blank" style="flex: 1; min-width: 120px; padding: 12px; border-radius: 8px; font-weight: bold; background: #ef6c00; color: white; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
-                            🏷️ TaiCOL
-                        </a>
-                        <a href="https://www.fishbase.se/summary/${sciName.replace(/\s+/g, '-')}" target="_blank" style="flex: 1; min-width: 120px; padding: 12px; border-radius: 8px; font-weight: bold; background: var(--accent-green); color: white; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
-                            ➔ FishBase
-                        </a>
-                    </div>
-                    
-                    <div class="wiki-content"></div>
-                </div>
-            `;
-        }).join('');
-
-        htmlContent += `
-            <div class="data-credits">
-                資料來源：<a href="https://taicol.tw/" target="_blank">臺灣物種名錄 (TaiCOL)</a> | 
-                <a href="https://www.fishbase.se/" target="_blank">世界魚類資料庫 (FishBase)</a> | 
-                <a href="https://zh.wikipedia.org/" target="_blank">維基百科 (Wikipedia)</a>
-                <br><br>
-                <small>※ 系統透過開放 API 介接，實際物種資訊請以官方發布為準。</small>
-            </div>
-        `;
-
-        resultDiv.innerHTML = htmlContent;
-
-    } catch (error) {
-        console.error("搜尋錯誤:", error);
-        resultDiv.innerHTML = `<div style="color:red; text-align:center; padding:20px;">⚠️ API 連線逾時，請重試。</div>`;
-    }
-});
+                    <div class="data

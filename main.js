@@ -6,57 +6,82 @@ searchBtn.addEventListener('click', async () => {
     const name = fishInput.value.trim();
     if (!name) return;
 
-    resultDiv.innerHTML = `<p style="color: #0077be;">正在搜尋「${name}」的所有可能物種... 🔍</p>`;
+    resultDiv.innerHTML = `<p style="color: #0077be;">正在搜尋並抓取詳細物種資料... 🌊</p>`;
 
-    // 💡 關鍵變更：best=no (列出所有匹配項), only_taiwan=yes (限定台灣物種)
-    const targetUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(name)}&best=no&only_taiwan=yes`;
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+    // 1. 先進行模糊比對 (取前 8 筆最可能的，避免過多導致載入過慢)
+    const matchUrl = `https://api.taicol.tw/v2/nameMatch?name=${encodeURIComponent(name)}&best=no&limit=8`;
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(matchUrl)}`;
 
     try {
         const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error('中轉站連線失敗');
+        const matchResult = await response.json();
 
-        const data = await response.json();
-        console.log("全部比對結果:", data);
+        if (matchResult.data && matchResult.data.length > 0) {
+            resultDiv.innerHTML = `<p style="margin-bottom:15px; color:#666;">找到 ${matchResult.data.length} 個可能物種，正在載入詳細資訊...</p>`;
 
-        if (data.data && data.data.length > 0) {
-            // 💡 清空搜尋中提示，準備填入清單
-            resultDiv.innerHTML = `<p style="margin-bottom:15px; color:#666;">找到 ${data.data.length} 個可能的匹配結果：</p>`;
+            // 2. 核心技術：對每個結果同時發動 "詳細資料" 請求
+            const detailPromises = matchResult.data.map(async (matchItem) => {
+                const taxonId = matchItem.taxon_id;
+                const detailUrl = `https://api.taicol.tw/v2/taxon/${taxonId}`;
+                const detailProxy = `https://corsproxy.io/?${encodeURIComponent(detailUrl)}`;
+                
+                try {
+                    const res = await fetch(detailProxy);
+                    const detail = await res.json();
+                    // TaiCOL v2 taxon API 有時直接回傳物件，有時包在 data 裡
+                    return detail.data ? (Array.isArray(detail.data) ? detail.data[0] : detail.data) : detail;
+                } catch (e) {
+                    return null; // 失敗的跳過
+                }
+            });
 
-            // 💡 使用 map 產生所有結果的 HTML 
-            const htmlList = data.data.map(fish => {
-                // 取得學名 (優先使用正式名 accepted_name)
-                const fullSci = fish.accepted_name || fish.matched_name || "Unknown";
-                // 格式化學名：只取前兩字 (屬名+種小名) 用於 FishBase 連結
-                const cleanSci = fullSci.split(' ').slice(0, 2).join(' ');
+            // 等待所有詳細資料抓取完成
+            const detailedFishList = await Promise.all(detailPromises);
+
+            // 3. 渲染美化後的結果
+            const htmlContent = detailedFishList.map((fish, index) => {
+                if (!fish) return ''; // 沒抓到資料的略過
+
+                const matchInfo = matchResult.data[index];
+                const sciNameFull = fish.scientific_name || matchInfo.accepted_name;
+                const cleanSci = sciNameFull.split(' ').slice(0, 2).join(' '); // 乾淨學名供 FishBase 使用
                 
                 return `
-                    <div style="background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h3 style="margin: 0; color: #0077be; font-size: 1.1em;">🐟 ${name} (匹配名: ${fish.matched_name})</h3>
-                                <p style="margin: 5px 0; font-size: 0.9em; color: #d32f2f;"><i>${fullSci}</i></p>
-                                <span style="font-size: 0.75em; background: #eee; padding: 2px 6px; border-radius: 4px; color: #666;">
-                                    ${fish.matched_name_usage || '物種紀錄'}
-                                </span>
+                    <div style="background: white; padding: 20px; border-radius: 15px; border: 2px solid #0077be; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <h3 style="margin: 0 0 8px 0; color: #0077be;">🐟 ${fish.common_name_c || name}</h3>
+                                <p style="margin: 4px 0; font-size: 0.95em;"><strong>學名：</strong> <i style="color: #d32f2f;">${sciNameFull}</i></p>
+                                <p style="margin: 4px 0; font-size: 0.9em; color: #555;">
+                                    <strong>科別：</strong> ${fish.family_c || ''} (${fish.family || '未分類'})
+                                </p>
+                                ${fish.alternative_name_c ? `<p style="margin: 4px 0; font-size: 0.85em; color: #777;"><strong>別名：</strong> ${fish.alternative_name_c}</p>` : ''}
+                                <div style="margin-top: 10px;">
+                                    <span style="font-size: 0.75em; background: #e3f2fd; color: #1976d2; padding: 3px 8px; border-radius: 20px; margin-right: 5px;">
+                                        ${fish.alien_type || '原生種'}
+                                    </span>
+                                    <span style="font-size: 0.75em; background: #f1f8e9; color: #388e3c; padding: 3px 8px; border-radius: 20px;">
+                                        ID: ${fish.taxon_id}
+                                    </span>
+                                </div>
                             </div>
                             <a href="https://www.fishbase.se/summary/${cleanSci.replace(/\s+/g, '-')}" 
                                target="_blank" 
-                               style="background: #0077be; color: white; text-align: center; padding: 8px 12px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 0.85em;">
-                               FishBase
+                               style="background: #0077be; color: white; padding: 10px 15px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.9em; margin-left: 10px; white-space: nowrap;">
+                               詳細圖鑑
                             </a>
                         </div>
                     </div>
                 `;
             }).join('');
 
-            resultDiv.innerHTML += htmlList;
+            resultDiv.innerHTML = htmlContent;
 
         } else {
-            resultDiv.innerHTML = `❌ 找不到與「${name}」相關的紀錄，請試試其他俗名（如：鮪、鯛）。`;
+            resultDiv.innerHTML = `❌ 找不到與「${name}」相關的紀錄。`;
         }
     } catch (error) {
-        console.error("搜尋錯誤:", error);
-        resultDiv.innerHTML = `<div style="color:red;">⚠️ 搜尋失敗：${error.message}</div>`;
+        console.error("搜尋過程出錯:", error);
+        resultDiv.innerHTML = `<div style="color:red; padding:10px;">⚠️ 載入失敗，請稍後再試。</div>`;
     }
 });

@@ -23,7 +23,6 @@
             --accent-green: #004d40;
             --sealife-teal: #00838f;
             --fishdb-indigo: #1a237e;
-            --worms-slate: #455a64; /* WoRMS 專用色 */
             --danger-red: #d32f2f;
             --bg-light: #f4f7f9;
             --text-main: #333;
@@ -41,6 +40,7 @@
 
         .container { max-width: 900px; margin: 0 auto; }
 
+        /* 標題與中二潤飾 */
         .header { text-align: center; margin-bottom: 30px; }
         .header h1 { color: var(--primary-blue); font-size: 2.2em; margin-bottom: 10px; letter-spacing: 1px; }
         .header .intro-text { font-size: 1em; color: var(--text-muted); font-style: italic; margin-bottom: 15px; }
@@ -52,18 +52,21 @@
         }
         .warning b { color: var(--primary-blue); }
 
+        /* 搜尋指引陣 */
         .search-guide {
             text-align: left; font-size: 0.85em; color: #777; margin: 0 auto 12px;
             max-width: 750px; padding-left: 12px; border-left: 4px solid var(--primary-blue);
         }
         .search-guide i { font-style: italic; }
 
+        /* 搜尋框 */
         .search-box { display: flex; gap: 12px; margin-bottom: 30px; max-width: 750px; margin-left: auto; margin-right: auto; }
         #fishName { flex: 1; padding: 15px 20px; font-size: 1.1em; border: 2px solid #ddd; border-radius: 14px; outline: none; transition: 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         #fishName:focus { border-color: var(--primary-blue); box-shadow: 0 0 12px rgba(0,119,190,0.15); }
         #searchBtn { padding: 15px 35px; background: var(--primary-blue); color: white; border: none; border-radius: 14px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 1.1em; }
         #searchBtn:hover { background: var(--dark-blue); transform: translateY(-1px); }
 
+        /* 幻獸卡片 */
         .fish-card {
             background: #fff; border-radius: 18px; padding: 28px; margin-bottom: 25px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07); display: flex; gap: 28px;
@@ -82,7 +85,7 @@
         .fish-sci-name { font-size: 1.15em; color: var(--danger-red); font-style: italic; margin-bottom: 12px; opacity: 0.9; }
         .aliases-box { font-size: 0.9em; color: #666; background: #f8f9fa; padding: 10px 14px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #e0e0e0; }
         
-        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.95em; margin-bottom: 15px; }
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.95em; margin-bottom: 18px; }
         .data-item strong { color: #999; font-size: 0.8em; display: block; margin-bottom: 3px; text-transform: uppercase; }
 
         .conservation-section { margin: 18px 0; padding-top: 18px; border-top: 1px solid #f2f2f2; }
@@ -90,14 +93,14 @@
         .tag-group { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
         .tag-label { font-size: 0.75em; color: #bbb; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; }
 
-        .action-buttons { display: flex; gap: 8px; padding-top: 15px; flex-wrap: wrap; }
-        .btn { flex: 1; min-width: 105px; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; color: white; text-decoration: none; text-align: center; font-size: 0.8em; transition: 0.2s; }
+        /* 按鈕區佈局 */
+        .action-buttons { display: flex; gap: 10px; padding-top: 15px; flex-wrap: wrap; }
+        .btn { flex: 1; min-width: 110px; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; color: white; text-decoration: none; text-align: center; font-size: 0.85em; transition: 0.2s; }
         .btn-wiki { background: var(--primary-blue); }
         .btn-taicol { background: #ef6c00; }
         .btn-fishdb { background: var(--fishdb-indigo); }
         .btn-fishbase { background: var(--accent-green); }
         .btn-sealife { background: var(--sealife-teal); }
-        .btn-worms { background: var(--worms-slate); }
         .btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
         .wiki-content { display: none; margin-top: 18px; padding: 20px; background: #f0f7ff; border-radius: 14px; border-left: 6px solid var(--primary-blue); font-size: 1em; line-height: 1.8; text-align: justify; }
@@ -111,7 +114,7 @@
             .fish-img-container { width: 100%; flex: none; height: 190px; }
             .search-box { flex-direction: column; }
             .conservation-tags { grid-template-columns: repeat(3, 1fr); gap: 10px; }
-            .btn { min-width: 130px; }
+            .btn { min-width: 140px; }
         }
     </style>
 </head>
@@ -149,7 +152,6 @@
             <a href="https://fishdb.sinica.edu.tw/" target="_blank">FishDB</a> | 
             <a href="https://www.fishbase.se/" target="_blank">FishBase</a> | 
             <a href="https://sealifebase.ca/" target="_blank">SeaLifeBase</a> | 
-            <a href="https://www.marinespecies.org/" target="_blank">WoRMS</a> | 
             <a href="https://zh.wikipedia.org/" target="_blank">Wikipedia</a>
             <br>圖片來源：<a href="https://zh.wikipedia.org/" target="_blank">Wikipedia</a>
             <br>※ 系統透過開放 API 介接，資訊僅供參考。
